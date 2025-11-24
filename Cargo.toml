@@ -1,0 +1,30 @@
+[package]
+edition = "2021"
+name = "agentx"
+description = "An example of using gpui-component to create a window with a custom title bar."
+publish = false
+version = "0.4.1"
+
+[dependencies]
+anyhow.workspace = true
+gpui.workspace = true
+gpui-component.workspace = true
+gpui-component-assets.workspace = true
+
+fake = { version = "2.10.0", features = ["dummy"] }
+serde = "1"
+serde_json = "1"
+rand = "0.8"
+autocorrect = "2.14.2"
+chrono = "0.4"
+tree-sitter-navi = "0.2.2"
+smol.workspace = true
+color-lsp = "0.2.0"
+lsp-types.workspace = true
+# reqwest_client = { path = "../crates/reqwest_client" }
+# smol.workspace = true
+tracing.workspace = true
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+
+[lints]
+workspace = true
