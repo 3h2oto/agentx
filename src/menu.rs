@@ -126,7 +126,7 @@ impl Render for UIMenu {
                             .outline()
                             .label("Edit")
                             .dropdown_menu(move |this, window, cx| {
-                                this.link("About", "https://github.com/longbridge/gpui-component")
+                                this.link("About", "https://github.com/sxhxliang")
                                     .separator()
                                     .item(PopupMenuItem::new("Handle Click").on_click(
                                         window.listener_for(&view, |this, _, _, cx| {

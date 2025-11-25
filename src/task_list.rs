@@ -448,7 +448,7 @@ pub struct ListTaskPanel {
 
 impl super::DockPanel for ListTaskPanel {
     fn title() -> &'static str {
-        "List"
+        "Tasks"
     }
 
     fn description() -> &'static str {

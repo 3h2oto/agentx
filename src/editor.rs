@@ -57,7 +57,7 @@ pub struct CodeEditorPanel {
 
 impl super::DockPanel for CodeEditorPanel {
     fn title() -> &'static str {
-        "List"
+        "CodeEditor"
     }
 
     fn description() -> &'static str {

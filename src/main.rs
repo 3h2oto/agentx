@@ -306,7 +306,7 @@ impl DockWorkspace {
             view.set_center(dock_item, window, cx);
             view.set_left_dock(left_panels, Some(px(350.)), true, window, cx);
             view.set_bottom_dock(bottom_panels, Some(px(200.)), true, window, cx);
-            view.set_right_dock(right_panels, Some(px(320.)), true, window, cx);
+            view.set_right_dock(right_panels, Some(px(480.)), true, window, cx);
 
             Self::save_state(&view.dump(cx)).unwrap();
         });
