@@ -191,6 +191,10 @@ impl TaskListDelegate {
 
     fn prepare(&mut self, query: impl Into<SharedString>) {
         self.query = query.into();
+        // Clear previous data before rebuilding
+        self.industries.clear();
+        self.matched_agent_tasks.clear();
+
         let agent_tasks: Vec<Rc<AgentTask>> = self
             ._agent_tasks
             .iter()
@@ -371,29 +375,6 @@ impl ListDelegate for TaskListDelegate {
         )
     }
 
-    // fn render_section_footer(
-    //     &self,
-    //     section: usize,
-    //     _: &mut Window,
-    //     cx: &mut App,
-    // ) -> Option<impl IntoElement> {
-    //     let Some(_) = self.industries.get(section) else {
-    //         return None;
-    //     };
-
-    //     Some(
-    //         div()
-    //             .pt_1()
-    //             .pb_5()
-    //             .px_2()
-    //             .text_xs()
-    //             .text_color(cx.theme().muted_foreground)
-    //             .child(format!(
-    //                 "Total {} items in section.",
-    //                 self.matched_agent_tasks[section].len()
-    //             )),
-    //     )
-    // }
 
     fn render_item(&self, ix: IndexPath, _: &mut Window, _: &mut App) -> Option<Self::Item> {
         let selected = Some(ix) == self.selected_index || Some(ix) == self.confirmed_index;
@@ -465,7 +446,7 @@ impl ListTaskPanel {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let mut delegate = TaskListDelegate {
             industries: vec![],
-            matched_agent_tasks: vec![vec![]],
+            matched_agent_tasks: vec![],
             _agent_tasks: vec![],
             selected_index: Some(IndexPath::default()),
             confirmed_index: None,
