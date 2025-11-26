@@ -3,6 +3,7 @@ mod app;
 mod chat_input;
 mod code_editor;
 mod components;
+mod config;
 mod conversation;
 pub mod dock_panel;
 mod schemas;
@@ -13,11 +14,16 @@ mod task_turn_view;
 mod welcome_panel;
 pub mod workspace;
 
+use std::sync::Arc;
 
-use crate::dock_panel::{DockPanel, DockPanelContainer, DockPanelState};
+use crate::{
+    acp_client::{AgentManager, PermissionStore},
+    dock_panel::{DockPanel, DockPanelContainer, DockPanelState},
+};
 pub use app::{app_menus, menu, themes, title_bar};
 pub use chat_input::ChatInputPanel;
 pub use code_editor::CodeEditorPanel;
+pub use config::{AgentProcessConfig, Config, Settings};
 pub use conversation::ConversationPanel;
 use gpui::{
     actions, div, prelude::FluentBuilder as _, px, size, Action, AnyElement, AnyView, App,

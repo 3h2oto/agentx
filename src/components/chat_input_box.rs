@@ -187,9 +187,7 @@ impl RenderOnce for ChatInputBox {
                                     )
                                     .when_some(self.mode_select, |this, mode_select| {
                                         this.child(
-                                            Select::new(&mode_select)
-                                                .small()
-                                                .appearance(false),
+                                            Select::new(&mode_select).small().appearance(false),
                                         )
                                     })
                                     .child(
