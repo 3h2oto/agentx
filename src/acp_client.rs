@@ -287,7 +287,7 @@ impl AgentHandle {
         Ok(Self { name, sender })
     }
 
-    async fn new_session(
+    pub async fn new_session(
         &self,
         request: acp::NewSessionRequest,
     ) -> Result<acp::NewSessionResponse> {
@@ -305,7 +305,7 @@ impl AgentHandle {
         result
     }
 
-    async fn prompt(&self, request: acp::PromptRequest) -> Result<acp::PromptResponse> {
+    pub async fn prompt(&self, request: acp::PromptRequest) -> Result<acp::PromptResponse> {
         let (tx, rx) = oneshot::channel();
         self.sender
             .send(AgentCommand::Prompt {

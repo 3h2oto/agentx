@@ -32,6 +32,7 @@ pub struct ChatInputBox {
     context_popover_open: bool,
     on_context_popover_change: Option<Box<dyn Fn(&bool, &mut Window, &mut App) + 'static>>,
     mode_select: Option<Entity<SelectState<Vec<&'static str>>>>,
+    agent_select: Option<Entity<SelectState<Vec<String>>>>,
 }
 
 impl ChatInputBox {
@@ -47,6 +48,7 @@ impl ChatInputBox {
             context_popover_open: false,
             on_context_popover_change: None,
             mode_select: None,
+            agent_select: None,
         }
     }
 
@@ -94,6 +96,12 @@ impl ChatInputBox {
     /// Set the mode select state
     pub fn mode_select(mut self, select: Entity<SelectState<Vec<&'static str>>>) -> Self {
         self.mode_select = Some(select);
+        self
+    }
+
+    /// Set the agent select state
+    pub fn agent_select(mut self, select: Entity<SelectState<Vec<String>>>) -> Self {
+        self.agent_select = Some(select);
         self
     }
 }
@@ -231,7 +239,26 @@ impl RenderOnce for ChatInputBox {
 
                                 btn
                             }),
-                    ),
+                    )
+                    // Agent selector row at the bottom
+                    .when_some(self.agent_select, |this, agent_select| {
+                        this.child(
+                            h_flex()
+                                .w_full()
+                                .items_center()
+                                .gap_2()
+                                .pt_2()
+                                .border_t_1()
+                                .border_color(theme.border)
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(theme.muted_foreground)
+                                        .child("Agent:"),
+                                )
+                                .child(Select::new(&agent_select).small().appearance(false)),
+                        )
+                    }),
             )
     }
 }
