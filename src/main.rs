@@ -17,7 +17,7 @@ fn main() {
         })
         .detach();
 
-        cx.spawn(async move |_cx| {
+        cx.spawn(async move |cx| {
             let config: Config = match std::fs::read_to_string(&settings.config_path)
                 .with_context(|| format!("failed to read {}", settings.config_path.display()))
             {
@@ -46,16 +46,20 @@ fn main() {
             {
                 Ok(manager) => {
                     println!("Loaded {} agents.", manager.list_agents().len());
-                    println!("Type '/help' for available commands.");
 
                     // Set the first agent as active by default
-                    let mut active_agent: Option<String> = manager.list_agents().first().cloned();
-                    let mut active_sessions: std::collections::HashMap<String, String> =
-                        std::collections::HashMap::new();
+                    let active_agent: Option<String> = manager.list_agents().first().cloned();
 
                     if let Some(ref agent) = active_agent {
                         println!("Active agent set to: {}", agent);
                     }
+
+                    // Store in global AppState
+                    cx.update(|cx| {
+                        agentx::AppState::global_mut(cx).set_agent_manager(manager);
+                        agentx::AppState::global_mut(cx).set_permission_store(permission_store);
+                    })
+                    .ok();
                 }
                 Err(e) => {
                     eprintln!("Failed to initialize agent manager: {}", e);
