@@ -226,7 +226,6 @@ impl ListDelegate for TaskListDelegate {
         )
     }
 
-
     fn render_item(&self, ix: IndexPath, _: &mut Window, _: &mut App) -> Option<Self::Item> {
         let selected = Some(ix) == self.selected_index || Some(ix) == self.confirmed_index;
         if let Some(agent_task) = self.matched_agent_tasks[ix.section].get(ix.row) {
@@ -249,47 +248,52 @@ impl ListDelegate for TaskListDelegate {
             v_flex()
                 .w_full()
                 .gap_1()
-                .children(self.industries.iter().enumerate().map(|(section, task_type)| {
-                    let collapsed_sections = collapsed_sections.clone();
-                    let list_state = list_state.clone();
-                    let task_type = task_type.clone();
+                .children(
+                    self.industries
+                        .iter()
+                        .enumerate()
+                        .map(|(section, task_type)| {
+                            let collapsed_sections = collapsed_sections.clone();
+                            let list_state = list_state.clone();
+                            let task_type = task_type.clone();
 
-                    div()
-                        .flex()
-                        .flex_row()
-                        .items_center()
-                        .justify_between()
-                        .pb_1()
-                        .px_2()
-                        .gap_2()
-                        .text_sm()
-                        .rounded(cx.theme().radius)
-                        .child(
                             div()
                                 .flex()
                                 .flex_row()
                                 .items_center()
+                                .justify_between()
+                                .pb_1()
+                                .px_2()
                                 .gap_2()
-                                .flex_1()
-                                .text_color(cx.theme().muted_foreground)
-                                .cursor_default()
-                                .hover(|style| style.bg(cx.theme().secondary))
+                                .text_sm()
                                 .rounded(cx.theme().radius)
-                                .on_mouse_down(MouseButton::Left, move |_, _window, cx| {
-                                    // Expand the section
-                                    collapsed_sections.borrow_mut().remove(&section);
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_row()
+                                        .items_center()
+                                        .gap_2()
+                                        .flex_1()
+                                        .text_color(cx.theme().muted_foreground)
+                                        .cursor_default()
+                                        .hover(|style| style.bg(cx.theme().secondary))
+                                        .rounded(cx.theme().radius)
+                                        .on_mouse_down(MouseButton::Left, move |_, _window, cx| {
+                                            // Expand the section
+                                            collapsed_sections.borrow_mut().remove(&section);
 
-                                    if let Some(list_state) = list_state.as_ref() {
-                                        _ = list_state.update(cx, |_, cx| {
-                                            cx.notify();
-                                        });
-                                    }
-                                })
-                                .child(Icon::new(IconName::ChevronRight).size(px(14.)))
-                                .child(Icon::new(IconName::Folder))
-                                .child(task_type),
-                        )
-                }))
+                                            if let Some(list_state) = list_state.as_ref() {
+                                                _ = list_state.update(cx, |_, cx| {
+                                                    cx.notify();
+                                                });
+                                            }
+                                        })
+                                        .child(Icon::new(IconName::ChevronRight).size(px(14.)))
+                                        .child(Icon::new(IconName::Folder))
+                                        .child(task_type),
+                                )
+                        }),
+                )
                 .into_any_element()
         } else {
             // Default empty state
@@ -383,8 +387,10 @@ impl ListTaskPanel {
             list.delegate_mut().list_state = Some(task_list.downgrade());
         });
 
-        let _subscriptions = vec![
-            cx.subscribe_in(&task_list, window, |_this, _, ev: &ListEvent, window, cx| match ev {
+        let _subscriptions = vec![cx.subscribe_in(
+            &task_list,
+            window,
+            |_this, _, ev: &ListEvent, window, cx| match ev {
                 ListEvent::Select(ix) => {
                     println!("List Selected: {:?}", ix);
                 }
@@ -396,8 +402,8 @@ impl ListTaskPanel {
                 ListEvent::Cancel => {
                     println!("List Cancelled");
                 }
-            }),
-        ];
+            },
+        )];
 
         // Spawn a background task to randomly update task status for demo
         cx.spawn(async move |this, cx| {

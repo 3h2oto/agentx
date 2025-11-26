@@ -1,7 +1,13 @@
 use anyhow::{Context as _, Result};
 use gpui::*;
 use gpui_component::{
-    IconName, Root, Sizable, button::{Button, ButtonVariants as _}, dock::{self, ClosePanel, Dock, DockArea, DockAreaState, DockEvent, DockItem, DockPlacement, ToggleZoom}, menu::DropdownMenu
+    button::{Button, ButtonVariants as _},
+    dock::{
+        self, ClosePanel, Dock, DockArea, DockAreaState, DockEvent, DockItem, DockPlacement,
+        ToggleZoom,
+    },
+    menu::DropdownMenu,
+    IconName, Root, Sizable,
 };
 
 use agentx::{

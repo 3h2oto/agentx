@@ -1,20 +1,19 @@
-mod app_menus;
+mod app;
 mod chat_input;
 mod components;
 mod conversation;
-mod conversation_schema;
-mod editor;
-mod menu;
+mod schemas;
+mod code_editor;
 mod task_list;
 mod task_turn_view;
-mod task_schema;
+mod settings_window;
 mod task_data;
 mod welcome_panel;
-mod settings_window;
 
-mod themes;
-mod title_bar;
-
+pub use app::{app_menus, menu, themes, title_bar};
+pub use chat_input::ChatInputPanel;
+pub use conversation::ConversationPanel;
+pub use code_editor::CodeEditorPanel;
 use gpui::{
     actions, div, prelude::FluentBuilder as _, px, rems, size, Action, AnyElement, AnyView, App,
     AppContext, Bounds, Context, Div, Entity, EventEmitter, Focusable, Global, Hsla,
@@ -22,11 +21,8 @@ use gpui::{
     SharedString, Size, StatefulInteractiveElement, StyleRefinement, Styled, Window, WindowBounds,
     WindowKind, WindowOptions,
 };
-
-pub use chat_input::ChatInputPanel;
-pub use conversation::ConversationPanel;
-pub use editor::CodeEditorPanel;
 pub use menu::UIMenu;
+pub use schemas::{conversation_schema, task_schema};
 use serde::{Deserialize, Serialize};
 pub use settings_window::SettingsWindow;
 pub use task_list::ListTaskPanel;
@@ -231,7 +227,7 @@ pub fn init(cx: &mut App) {
     gpui_component::init(cx);
     AppState::init(cx);
     themes::init(cx);
-    editor::init();
+    code_editor::init();
     menu::init(cx);
 
     cx.bind_keys([

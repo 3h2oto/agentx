@@ -3,10 +3,7 @@ use gpui::{
     Render, Styled, Window,
 };
 
-use gpui_component::{
-    input::InputState,
-    v_flex, ActiveTheme, StyledExt,
-};
+use gpui_component::{input::InputState, v_flex, ActiveTheme, StyledExt};
 
 use crate::{components::ChatInputBox, CreateTaskFromWelcome};
 
@@ -43,8 +40,8 @@ impl WelcomePanel {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let input_state = cx.new(|cx| {
             InputState::new(window, cx)
-                .auto_grow(2, 8)  // Auto-grow from 2 to 8 rows
-                .soft_wrap(true)   // Enable word wrapping
+                .auto_grow(2, 8) // Auto-grow from 2 to 8 rows
+                .soft_wrap(true) // Enable word wrapping
                 .placeholder("Describe what you'd like to build...")
         });
 
@@ -73,7 +70,7 @@ impl Render for WelcomePanel {
             .child(
                 v_flex()
                     .w_full()
-                    .max_w(px(800.))  // Maximum width for better readability
+                    .max_w(px(800.)) // Maximum width for better readability
                     .gap_4()
                     .child(
                         // Welcome title and subtitle
@@ -87,14 +84,14 @@ impl Render for WelcomePanel {
                                     .text_2xl()
                                     .font_semibold()
                                     .text_color(cx.theme().foreground)
-                                    .child("Welcome to Agent Studio")
+                                    .child("Welcome to Agent Studio"),
                             )
                             .child(
                                 gpui::div()
                                     .text_base()
                                     .text_color(cx.theme().muted_foreground)
-                                    .child("Start by describing what you'd like to build")
-                            )
+                                    .child("Start by describing what you'd like to build"),
+                            ),
                     )
                     .child(
                         // Chat input with title and send handler
@@ -108,8 +105,8 @@ impl Render for WelcomePanel {
                                     let action = CreateTaskFromWelcome(task_name.into());
                                     window.dispatch_action(Box::new(action), cx);
                                 }
-                            })
-                    )
+                            }),
+                    ),
             )
     }
 }

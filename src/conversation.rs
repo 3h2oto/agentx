@@ -153,10 +153,7 @@ impl Focusable for ConversationPanel {
 
 impl Render for ConversationPanel {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut children = v_flex()
-            .p_4()
-            .gap_6()
-            .bg(cx.theme().background);
+        let mut children = v_flex().p_4().gap_6().bg(cx.theme().background);
 
         for item in &self.items {
             match item {
@@ -176,8 +173,8 @@ impl Render for ConversationPanel {
                 ConversationItem::ToolCallGroup { items } => {
                     let mut group = v_flex().pl_6().gap_2();
                     for tool_item in items {
-                         let tool_call = Self::map_tool_call(tool_item.clone());
-                         group = group.child(tool_call);
+                        let tool_call = Self::map_tool_call(tool_item.clone());
+                        group = group.child(tool_call);
                     }
                     children = children.child(group);
                 }

@@ -63,18 +63,15 @@ impl RenderOnce for ChatInputBox {
         v_flex()
             .w_full()
             .gap_3()
-            .px(px(32.))  // Left and right padding for spacing
+            .px(px(32.)) // Left and right padding for spacing
             .when_some(self.title, |this, title| {
                 this.child(
-                    h_flex()
-                        .w_full()
-                        .pb_2()
-                        .child(
-                            div()
-                                .text_sm()
-                                .text_color(theme.muted_foreground)
-                                .child(title)
-                        )
+                    h_flex().w_full().pb_2().child(
+                        div()
+                            .text_sm()
+                            .text_color(theme.muted_foreground)
+                            .child(title),
+                    ),
                 )
             })
             .child(
@@ -99,8 +96,7 @@ impl RenderOnce for ChatInputBox {
                     )
                     .child(
                         // Textarea (multi-line input)
-                        Input::new(&self.input_state)
-                            .appearance(false),
+                        Input::new(&self.input_state).appearance(false),
                     )
                     .child(
                         // Bottom row: Action buttons
@@ -140,7 +136,7 @@ impl RenderOnce for ChatInputBox {
                                     btn = btn.custom(
                                         ButtonCustomVariant::new(cx)
                                             .color(theme.muted.opacity(0.5))
-                                            .foreground(theme.muted_foreground.opacity(0.5))
+                                            .foreground(theme.muted_foreground.opacity(0.5)),
                                     );
                                 } else {
                                     // Enabled state: primary color with hover effect
@@ -148,7 +144,7 @@ impl RenderOnce for ChatInputBox {
                                         ButtonCustomVariant::new(cx)
                                             .color(theme.primary)
                                             .foreground(theme.background)
-                                            .hover(theme.primary.opacity(0.85))
+                                            .hover(theme.primary.opacity(0.85)),
                                     );
                                 }
 

@@ -1,9 +1,9 @@
 mod agent_message;
 mod agent_todo_list;
 mod chat_input_box;
+mod task_list_item;
 mod tool_call_item;
 mod user_message;
-mod task_list_item;
 
 pub use agent_message::{
     AgentContentType, AgentMessage, AgentMessageContent, AgentMessageData, AgentMessageView,

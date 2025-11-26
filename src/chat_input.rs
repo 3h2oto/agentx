@@ -3,10 +3,7 @@ use gpui::{
     Pixels, Render, Styled, Window,
 };
 
-use gpui_component::{
-    input::InputState,
-    v_flex, ActiveTheme,
-};
+use gpui_component::{input::InputState, v_flex, ActiveTheme};
 
 use crate::components::ChatInputBox;
 
@@ -40,8 +37,8 @@ impl ChatInputPanel {
     fn new(window: &mut Window, cx: &mut App) -> Self {
         let input_state = cx.new(|cx| {
             InputState::new(window, cx)
-                .auto_grow(2, 8)  // Auto-grow from 2 to 8 rows
-                .soft_wrap(true)   // Enable word wrapping
+                .auto_grow(2, 8) // Auto-grow from 2 to 8 rows
+                .soft_wrap(true) // Enable word wrapping
                 .placeholder("Ask, search, or make anything...")
         });
 
@@ -66,7 +63,7 @@ impl Render for ChatInputPanel {
             .bg(cx.theme().background)
             .child(
                 ChatInputBox::new("chat-input-box", self.input_state.clone())
-                    .title("Send a message")
+                    .title("Send a message"),
             )
     }
 }

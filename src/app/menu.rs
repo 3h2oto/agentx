@@ -1,3 +1,5 @@
+use crate::section;
+use crate::DockPanel;
 use gpui::{
     actions, div, px, Action, App, AppContext, Context, Corner, Entity, InteractiveElement,
     IntoElement, KeyBinding, ParentElement as _, Render, SharedString, Styled as _, Window,
@@ -9,8 +11,6 @@ use gpui_component::{
     v_flex, ActiveTheme as _, IconName, StyledExt,
 };
 use serde::Deserialize;
-
-use crate::section;
 
 #[derive(Action, Clone, PartialEq, Deserialize)]
 #[action(namespace = menu_story, no_json)]
@@ -45,7 +45,7 @@ pub struct UIMenu {
     message: String,
 }
 
-impl super::DockPanel for UIMenu {
+impl DockPanel for UIMenu {
     fn title() -> &'static str {
         "Menu"
     }

@@ -1,8 +1,7 @@
 use std::rc::Rc;
 
 use gpui::{
-    div, prelude::FluentBuilder, px, App, IntoElement, ParentElement, RenderOnce, Styled,
-    Window,
+    div, prelude::FluentBuilder, px, App, IntoElement, ParentElement, RenderOnce, Styled, Window,
 };
 use gpui_component::{
     h_flex, list::ListItem, spinner::Spinner, v_flex, ActiveTheme, Icon, IconName, Selectable,
@@ -95,7 +94,8 @@ impl RenderOnce for TaskListItem {
                                     .text_color(text_color)
                                     .whitespace_nowrap()
                                     .child(self.agent_task.name.clone()),
-                            ).child(
+                            )
+                            .child(
                                 // Subtitle with metadata - conditionally shown
                                 h_flex()
                                     .gap_1()
@@ -103,18 +103,18 @@ impl RenderOnce for TaskListItem {
                                     .text_color(muted_color)
                                     .child("2 Files ")
                                     .child(
-                                        div().text_color(add_color).child(
-                                            self.agent_task.add_new_code_lines_str.clone(),
-                                        ),
+                                        div()
+                                            .text_color(add_color)
+                                            .child(self.agent_task.add_new_code_lines_str.clone()),
                                     )
                                     .child(
-                                        div().text_color(delete_color).child(
-                                            self.agent_task.delete_code_lines_str.clone(),
-                                        ),
+                                        div()
+                                            .text_color(delete_color)
+                                            .child(self.agent_task.delete_code_lines_str.clone()),
                                     )
                                     .child(" · ")
                                     .child(self.agent_task.task_type.clone()),
-                            )
+                            ),
                     ),
             )
     }

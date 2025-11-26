@@ -14,7 +14,7 @@ use gpui_component::{
     ActiveTheme as _, IconName, PixelsExt, Sizable as _, Theme, TitleBar, WindowExt as _,
 };
 
-use crate::{app_menus, SettingsWindow, SelectFont, SelectRadius, SelectScrollbarShow};
+use crate::{app_menus, SelectFont, SelectRadius, SelectScrollbarShow, SettingsWindow};
 
 actions!(title_bar, [OpenSettings]);
 
@@ -53,7 +53,12 @@ impl AppTitleBar {
         self
     }
 
-    fn on_action_open_settings(&mut self, _: &OpenSettings, _: &mut Window, cx: &mut Context<Self>) {
+    fn on_action_open_settings(
+        &mut self,
+        _: &OpenSettings,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         SettingsWindow::open(cx).detach();
     }
 }

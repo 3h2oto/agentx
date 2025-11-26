@@ -69,11 +69,12 @@ impl SettingsWindow {
     fn render_title_bar(&self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         TitleBar::new()
             .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .px_2()
-                    .child(div().text_sm().text_color(cx.theme().tab_foreground).child("Settings")),
+                div().flex().items_center().px_2().child(
+                    div()
+                        .text_sm()
+                        .text_color(cx.theme().tab_foreground)
+                        .child("Settings"),
+                ),
             )
             .child(
                 div()
@@ -165,14 +166,34 @@ impl SettingsWindow {
             .child(
                 v_flex()
                     .gap_2()
-                    .child(div().text_sm().text_color(cx.theme().muted_foreground).child("Language"))
-                    .child(div().text_sm().text_color(cx.theme().foreground).child("English")),
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().muted_foreground)
+                            .child("Language"),
+                    )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().foreground)
+                            .child("English"),
+                    ),
             )
             .child(
                 v_flex()
                     .gap_2()
-                    .child(div().text_sm().text_color(cx.theme().muted_foreground).child("Auto Save"))
-                    .child(div().text_sm().text_color(cx.theme().foreground).child("After Delay")),
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().muted_foreground)
+                            .child("Auto Save"),
+                    )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().foreground)
+                            .child("After Delay"),
+                    ),
             )
     }
 
@@ -189,14 +210,34 @@ impl SettingsWindow {
             .child(
                 v_flex()
                     .gap_2()
-                    .child(div().text_sm().text_color(cx.theme().muted_foreground).child("Theme"))
-                    .child(div().text_sm().text_color(cx.theme().foreground).child("Dark")),
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().muted_foreground)
+                            .child("Theme"),
+                    )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().foreground)
+                            .child("Dark"),
+                    ),
             )
             .child(
                 v_flex()
                     .gap_2()
-                    .child(div().text_sm().text_color(cx.theme().muted_foreground).child("Font Size"))
-                    .child(div().text_sm().text_color(cx.theme().foreground).child("16px")),
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().muted_foreground)
+                            .child("Font Size"),
+                    )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().foreground)
+                            .child("16px"),
+                    ),
             )
     }
 
@@ -213,14 +254,34 @@ impl SettingsWindow {
             .child(
                 v_flex()
                     .gap_2()
-                    .child(div().text_sm().text_color(cx.theme().muted_foreground).child("Tab Size"))
-                    .child(div().text_sm().text_color(cx.theme().foreground).child("4 spaces")),
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().muted_foreground)
+                            .child("Tab Size"),
+                    )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().foreground)
+                            .child("4 spaces"),
+                    ),
             )
             .child(
                 v_flex()
                     .gap_2()
-                    .child(div().text_sm().text_color(cx.theme().muted_foreground).child("Line Numbers"))
-                    .child(div().text_sm().text_color(cx.theme().foreground).child("Enabled")),
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().muted_foreground)
+                            .child("Line Numbers"),
+                    )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().foreground)
+                            .child("Enabled"),
+                    ),
             )
     }
 
