@@ -1,6 +1,7 @@
 use gpui::{
     div, prelude::FluentBuilder as _, px, App, AppContext, ClickEvent, Context, ElementId, Entity,
-    IntoElement, ParentElement, Render, RenderOnce, SharedString, Styled, Window,
+    InteractiveElement, IntoElement, ParentElement, Render, RenderOnce, SharedString, Styled,
+    Window,
 };
 
 use agent_client_protocol_schema::{ToolCall, ToolCallContent, ToolCallId, ToolCallStatus, ToolKind};
@@ -69,36 +70,48 @@ fn extract_text_from_content(content: &ToolCallContent) -> Option<String> {
     }
 }
 
-/// Tool call item component based on ACP's ToolCall
-#[derive(IntoElement)]
+/// Tool call item component based on ACP's ToolCall - stateful version
 pub struct ToolCallItem {
-    id: ElementId,
     tool_call: ToolCall,
     open: bool,
-    on_toggle: Option<Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>>,
 }
 
 impl ToolCallItem {
-    pub fn new(id: impl Into<ElementId>, tool_call: ToolCall) -> Self {
+    pub fn new(tool_call: ToolCall) -> Self {
         Self {
-            id: id.into(),
             tool_call,
             open: false,
-            on_toggle: None,
         }
     }
 
-    pub fn open(mut self, open: bool) -> Self {
-        self.open = open;
-        self
+    /// Toggle the open state
+    pub fn toggle(&mut self, cx: &mut Context<Self>) {
+        self.open = !self.open;
+        cx.notify();
     }
 
-    pub fn on_toggle(
-        mut self,
-        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.on_toggle = Some(Box::new(handler));
-        self
+    /// Set the open state
+    pub fn set_open(&mut self, open: bool, cx: &mut Context<Self>) {
+        self.open = open;
+        cx.notify();
+    }
+
+    /// Update the tool call data
+    pub fn update_tool_call(&mut self, tool_call: ToolCall, cx: &mut Context<Self>) {
+        self.tool_call = tool_call;
+        cx.notify();
+    }
+
+    /// Update the status
+    pub fn update_status(&mut self, status: ToolCallStatus, cx: &mut Context<Self>) {
+        self.tool_call.status = status;
+        cx.notify();
+    }
+
+    /// Add content to the tool call
+    pub fn add_content(&mut self, content: ToolCallContent, cx: &mut Context<Self>) {
+        self.tool_call.content.push(content);
+        cx.notify();
     }
 
     fn has_content(&self) -> bool {
@@ -106,8 +119,8 @@ impl ToolCallItem {
     }
 }
 
-impl RenderOnce for ToolCallItem {
-    fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+impl Render for ToolCallItem {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let has_content = self.has_content();
         let status_color = match self.tool_call.status {
             ToolCallStatus::Completed => cx.theme().green,
@@ -116,9 +129,8 @@ impl RenderOnce for ToolCallItem {
             ToolCallStatus::Pending | _ => cx.theme().muted_foreground,
         };
 
-        let on_toggle = self.on_toggle;
-        let id = self.id;
         let open = self.open;
+        let tool_call_id = self.tool_call.tool_call_id.clone();
 
         Collapsible::new()
             .open(open)
@@ -154,24 +166,22 @@ impl RenderOnce for ToolCallItem {
                     )
                     .when(has_content, |this| {
                         // Add expand/collapse button only if there's content
-                        let btn = Button::new(SharedString::from(format!("{}-toggle", id)))
+                        this.child(
+                            Button::new(SharedString::from(format!(
+                                "tool-call-{}-toggle",
+                                tool_call_id
+                            )))
                             .icon(if open {
                                 IconName::ChevronUp
                             } else {
                                 IconName::ChevronDown
                             })
                             .ghost()
-                            .xsmall();
-
-                        let btn = if let Some(handler) = on_toggle {
-                            btn.on_click(move |ev, window, cx| {
-                                handler(ev, window, cx);
-                            })
-                        } else {
-                            btn
-                        };
-
-                        this.child(btn)
+                            .xsmall()
+                            .on_click(cx.listener(|this, _ev, _window, cx| {
+                                this.toggle(cx);
+                            })),
+                        )
                     }),
             )
             // Content - only visible when open and has content
@@ -197,51 +207,45 @@ impl RenderOnce for ToolCallItem {
 
 /// A stateful wrapper for ToolCallItem that can be used as a GPUI view
 pub struct ToolCallItemView {
-    tool_call: Entity<ToolCall>,
-    open: bool,
+    item: Entity<ToolCallItem>,
 }
 
 impl ToolCallItemView {
     pub fn new(tool_call: ToolCall, _window: &mut Window, cx: &mut App) -> Entity<Self> {
         cx.new(|cx| {
-            let tool_call_entity = cx.new(|_| tool_call);
-            Self {
-                tool_call: tool_call_entity,
-                open: false,
-            }
+            let item = cx.new(|_| ToolCallItem::new(tool_call));
+            Self { item }
         })
     }
 
     /// Update the tool call data
-    pub fn update_tool_call(&mut self, tool_call: ToolCall, cx: &mut App) {
-        self.tool_call.update(cx, |tc, cx| {
-            *tc = tool_call;
-            cx.notify();
+    pub fn update_tool_call(&mut self, tool_call: ToolCall, cx: &mut Context<Self>) {
+        self.item.update(cx, |item, cx| {
+            item.update_tool_call(tool_call, cx);
         });
+        cx.notify();
     }
 
     /// Update the status
     pub fn update_status(&mut self, status: ToolCallStatus, cx: &mut Context<Self>) {
-        self.tool_call.update(cx, |tc, cx| {
-            tc.status = status;
-            cx.notify();
+        self.item.update(cx, |item, cx| {
+            item.update_status(status, cx);
         });
         cx.notify();
     }
 
     /// Add content to the tool call
     pub fn add_content(&mut self, content: ToolCallContent, cx: &mut Context<Self>) {
-        self.tool_call.update(cx, |tc, cx| {
-            tc.content.push(content);
-            cx.notify();
+        self.item.update(cx, |item, cx| {
+            item.add_content(content, cx);
         });
         cx.notify();
     }
 
     /// Set content for the tool call
     pub fn set_content(&mut self, content: Vec<ToolCallContent>, cx: &mut Context<Self>) {
-        self.tool_call.update(cx, |tc, cx| {
-            tc.content = content;
+        self.item.update(cx, |item, cx| {
+            item.tool_call.content = content;
             cx.notify();
         });
         cx.notify();
@@ -249,27 +253,23 @@ impl ToolCallItemView {
 
     /// Toggle the open state
     pub fn toggle(&mut self, cx: &mut Context<Self>) {
-        self.open = !self.open;
+        self.item.update(cx, |item, cx| {
+            item.toggle(cx);
+        });
         cx.notify();
     }
 
     /// Set the open state
     pub fn set_open(&mut self, open: bool, cx: &mut Context<Self>) {
-        self.open = open;
+        self.item.update(cx, |item, cx| {
+            item.set_open(open, cx);
+        });
         cx.notify();
     }
 }
 
 impl Render for ToolCallItemView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let tool_call = self.tool_call.read(cx).clone();
-        let id = SharedString::from(format!("tool-call-{}", tool_call.tool_call_id));
-        let open = self.open;
-
-        ToolCallItem::new(id, tool_call)
-            .open(open)
-            .on_toggle(cx.listener(|this, _ev, _window, cx| {
-                this.toggle(cx);
-            }))
+    fn render(&mut self, _: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        self.item.clone()
     }
 }

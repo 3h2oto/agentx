@@ -1,13 +1,14 @@
 use gpui::{
-    div, prelude::FluentBuilder as _, px, App, AppContext, Context, ElementId, Entity, IntoElement,
-    ParentElement, Render, RenderOnce, SharedString, Styled, Window,
+    div, prelude::FluentBuilder as _, px, App, AppContext, Context, ElementId, Entity,
+    InteractiveElement, IntoElement, ParentElement, Render, RenderOnce, SharedString, Styled,
+    Window,
 };
 
 use agent_client_protocol_schema::{
     ContentBlock, EmbeddedResource, EmbeddedResourceResource, ResourceLink, SessionId,
     TextResourceContents,
 };
-use gpui_component::{collapsible::Collapsible, h_flex, v_flex, ActiveTheme, Icon, IconName};
+use gpui_component::{collapsible::Collapsible, h_flex, v_flex, ActiveTheme, Icon, IconName, Sizable, button::{Button, ButtonVariants}};
 
 /// User message data structure based on ACP's PromptRequest format
 #[derive(Clone, Debug)]
@@ -72,7 +73,7 @@ impl UserMessageData {
 }
 
 /// Helper to extract display information from ContentBlock
-fn get_resource_info(content: &ContentBlock) -> Option<ResourceInfo> {
+pub fn get_resource_info(content: &ContentBlock) -> Option<ResourceInfo> {
     match content {
         ContentBlock::ResourceLink(link) => Some(ResourceInfo {
             uri: link.uri.clone().into(),
@@ -106,11 +107,11 @@ fn extract_filename(uri: &str) -> String {
 }
 
 /// Resource information for display
-struct ResourceInfo {
-    uri: SharedString,
-    name: SharedString,
-    mime_type: Option<SharedString>,
-    text: Option<SharedString>,
+pub struct ResourceInfo {
+    pub uri: SharedString,
+    pub name: SharedString,
+    pub mime_type: Option<SharedString>,
+    pub text: Option<SharedString>,
 }
 
 impl ResourceInfo {
@@ -130,21 +131,35 @@ impl ResourceInfo {
     }
 }
 
-/// Resource item component (collapsible)
-#[derive(IntoElement)]
-struct ResourceItem {
+/// Resource item component (collapsible) - stateful version
+pub struct ResourceItem {
     resource: ResourceInfo,
     open: bool,
 }
 
 impl ResourceItem {
-    pub fn new(resource: ResourceInfo, open: bool) -> Self {
-        Self { resource, open }
+    pub fn new(resource: ResourceInfo) -> Self {
+        Self {
+            resource,
+            open: false,
+        }
+    }
+
+    /// Toggle the open/close state
+    pub fn toggle(&mut self, cx: &mut Context<Self>) {
+        self.open = !self.open;
+        cx.notify();
+    }
+
+    /// Set the open state
+    pub fn set_open(&mut self, open: bool, cx: &mut Context<Self>) {
+        self.open = open;
+        cx.notify();
     }
 }
 
-impl RenderOnce for ResourceItem {
-    fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+impl Render for ResourceItem {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let line_count = self
             .resource
             .text
@@ -152,10 +167,15 @@ impl RenderOnce for ResourceItem {
             .map(|t| t.lines().count())
             .unwrap_or(0);
 
+        let is_open = self.open;
+        let has_content = self.resource.text.is_some();
+        let resource_name = self.resource.name.clone();
+
         Collapsible::new()
+            .open(is_open)
             .w_full()
             .gap_2()
-            // Header
+            // Header - with toggle button
             .child(
                 h_flex()
                     .items_center()
@@ -176,9 +196,9 @@ impl RenderOnce for ResourceItem {
                             .text_size(px(13.))
                             .font_weight(gpui::FontWeight::MEDIUM)
                             .text_color(cx.theme().foreground)
-                            .child(self.resource.name.clone()),
+                            .child(resource_name.clone()),
                     )
-                    .when(line_count > 0, |this| {
+                    .when(line_count > 0, |this: gpui::Div| {
                         this.child(
                             div()
                                 .text_size(px(11.))
@@ -186,18 +206,25 @@ impl RenderOnce for ResourceItem {
                                 .child(format!("{} lines", line_count)),
                         )
                     })
-                    .child(
-                        Icon::new(if self.open {
-                            IconName::ChevronUp
-                        } else {
-                            IconName::ChevronDown
-                        })
-                        .size(px(14.))
-                        .text_color(cx.theme().muted_foreground),
-                    ),
+                    .when(has_content, |this| {
+                        // Add toggle button only if there's content
+                        this.child(
+                            Button::new(SharedString::from(format!("resource-toggle-{}", resource_name)))
+                                .icon(if is_open {
+                                    IconName::ChevronUp
+                                } else {
+                                    IconName::ChevronDown
+                                })
+                                .ghost()
+                                .xsmall()
+                                .on_click(cx.listener(|this, _ev, _window, cx| {
+                                    this.toggle(cx);
+                                })),
+                        )
+                    }),
             )
             // Content - code display (only if we have text)
-            .when(self.open && self.resource.text.is_some(), |this| {
+            .when(has_content, |this| {
                 this.content(
                     div()
                         .w_full()
@@ -224,36 +251,19 @@ impl RenderOnce for ResourceItem {
 pub struct UserMessage {
     id: ElementId,
     data: UserMessageData,
-    resource_states: Vec<bool>, // Track open/close state for each resource
 }
 
 impl UserMessage {
     pub fn new(id: impl Into<ElementId>, data: UserMessageData) -> Self {
-        let resource_count = data
-            .contents
-            .iter()
-            .filter(|c| matches!(c, ContentBlock::ResourceLink(_) | ContentBlock::Resource(_)))
-            .count();
-
         Self {
             id: id.into(),
             data,
-            resource_states: vec![false; resource_count],
         }
-    }
-
-    pub fn with_resource_state(mut self, index: usize, open: bool) -> Self {
-        if index < self.resource_states.len() {
-            self.resource_states[index] = open;
-        }
-        self
     }
 }
 
 impl RenderOnce for UserMessage {
     fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
-        let mut resource_index = 0;
-
         v_flex()
             .gap_3()
             .w_full()
@@ -291,21 +301,8 @@ impl RenderOnce for UserMessage {
                                     .child(text_content.text.clone())
                                     .into_any_element(),
                             ),
-                            ContentBlock::ResourceLink(_) | ContentBlock::Resource(_) => {
-                                if let Some(resource_info) = get_resource_info(&content) {
-                                    let current_index = resource_index;
-                                    resource_index += 1;
-                                    let open = self
-                                        .resource_states
-                                        .get(current_index)
-                                        .copied()
-                                        .unwrap_or(false);
-
-                                    Some(ResourceItem::new(resource_info, open).into_any_element())
-                                } else {
-                                    None
-                                }
-                            }
+                            // Skip resources in simple render - use UserMessageView for interactive resources
+                            ContentBlock::ResourceLink(_) | ContentBlock::Resource(_) => None,
                             // Skip other content types for now (Image, Audio)
                             _ => None,
                         }
@@ -316,46 +313,44 @@ impl RenderOnce for UserMessage {
 
 /// A stateful wrapper for UserMessage that can be used as a GPUI view
 pub struct UserMessageView {
-    data: Entity<UserMessageData>,
-    resource_states: Entity<Vec<bool>>,
+    pub(crate) data: Entity<UserMessageData>,
+    pub(crate) resource_items: Vec<Entity<ResourceItem>>,
 }
 
 impl UserMessageView {
     pub fn new(data: UserMessageData, _window: &mut Window, cx: &mut App) -> Entity<Self> {
-        let resource_count = data
-            .contents
-            .iter()
-            .filter(|c| matches!(c, ContentBlock::ResourceLink(_) | ContentBlock::Resource(_)))
-            .count();
-
         cx.new(|cx| {
-            let data_entity = cx.new(|_| data);
-            let states_entity = cx.new(|_| vec![false; resource_count]);
+            let data_entity = cx.new(|_| data.clone());
+
+            // Create ResourceItem entities for each resource in the data
+            let resource_items: Vec<Entity<ResourceItem>> = data
+                .contents
+                .iter()
+                .filter_map(|content| get_resource_info(content))
+                .map(|resource_info| cx.new(|_| ResourceItem::new(resource_info)))
+                .collect();
 
             Self {
                 data: data_entity,
-                resource_states: states_entity,
+                resource_items,
             }
         })
     }
 
     /// Update the message data
     pub fn update_data(&mut self, data: UserMessageData, cx: &mut Context<Self>) {
-        let resource_count = data
+        self.data.update(cx, |d, cx| {
+            *d = data.clone();
+            cx.notify();
+        });
+
+        // Recreate resource items
+        self.resource_items = data
             .contents
             .iter()
-            .filter(|c| matches!(c, ContentBlock::ResourceLink(_) | ContentBlock::Resource(_)))
-            .count();
-
-        self.data.update(cx, |d, cx| {
-            *d = data;
-            cx.notify();
-        });
-
-        self.resource_states.update(cx, |states, cx| {
-            *states = vec![false; resource_count];
-            cx.notify();
-        });
+            .filter_map(|content| get_resource_info(content))
+            .map(|resource_info| cx.new(|_| ResourceItem::new(resource_info)))
+            .collect();
 
         cx.notify();
     }
@@ -366,52 +361,100 @@ impl UserMessageView {
             matches!(content, ContentBlock::ResourceLink(_) | ContentBlock::Resource(_));
 
         self.data.update(cx, |d, cx| {
-            d.contents.push(content);
+            d.contents.push(content.clone());
             cx.notify();
         });
 
+        // If it's a resource, create a new ResourceItem entity
         if is_resource {
-            self.resource_states.update(cx, |states, cx| {
-                states.push(false);
-                cx.notify();
-            });
+            if let Some(resource_info) = get_resource_info(&content) {
+                let item = cx.new(|_| ResourceItem::new(resource_info));
+                self.resource_items.push(item);
+            }
         }
 
         cx.notify();
     }
 
-    /// Toggle resource open state
+    /// Toggle resource open state by index
     pub fn toggle_resource(&mut self, index: usize, cx: &mut Context<Self>) {
-        self.resource_states.update(cx, |states, cx| {
-            if let Some(state) = states.get_mut(index) {
-                *state = !*state;
-                cx.notify();
-            }
-        });
-        cx.notify();
+        if let Some(item) = self.resource_items.get(index) {
+            item.update(cx, |item, cx| {
+                item.toggle(cx);
+            });
+        }
     }
 
-    /// Set resource open state
+    /// Set resource open state by index
     pub fn set_resource_open(&mut self, index: usize, open: bool, cx: &mut Context<Self>) {
-        self.resource_states.update(cx, |states, cx| {
-            if let Some(state) = states.get_mut(index) {
-                *state = open;
-                cx.notify();
-            }
-        });
-        cx.notify();
+        if let Some(item) = self.resource_items.get(index) {
+            item.update(cx, |item, cx| {
+                item.set_open(open, cx);
+            });
+        }
     }
 }
 
 impl Render for UserMessageView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let data = self.data.read(cx).clone();
-        let resource_states = self.resource_states.read(cx).clone();
+        let mut resource_index = 0;
 
-        let mut msg = UserMessage::new("user-message", data);
-        for (index, open) in resource_states.iter().enumerate() {
-            msg = msg.with_resource_state(index, *open);
-        }
-        msg
+        v_flex()
+            .gap_3()
+            .w_full()
+            // User icon and label
+            .child(
+                h_flex()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        Icon::new(IconName::User)
+                            .size(px(16.))
+                            .text_color(cx.theme().accent),
+                    )
+                    .child(
+                        div()
+                            .text_size(px(13.))
+                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                            .text_color(cx.theme().foreground)
+                            .child("You"),
+                    ),
+            )
+            // Message content
+            .child(
+                v_flex()
+                    .gap_3()
+                    .pl_6()
+                    .w_full()
+                    .children(data.contents.into_iter().filter_map(|content| {
+                        match &content {
+                            ContentBlock::Text(text_content) => Some(
+                                div()
+                                    .text_size(px(14.))
+                                    .text_color(cx.theme().foreground)
+                                    .line_height(px(22.))
+                                    .child(text_content.text.clone())
+                                    .into_any_element(),
+                            ),
+                            ContentBlock::ResourceLink(_) | ContentBlock::Resource(_) => {
+                                if get_resource_info(&content).is_some() {
+                                    let current_index = resource_index;
+                                    resource_index += 1;
+
+                                    if let Some(item) = self.resource_items.get(current_index) {
+                                        Some(item.clone().into_any_element())
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
+                            }
+                            // Skip other content types for now (Image, Audio)
+                            _ => None,
+                        }
+                    })),
+            )
     }
 }

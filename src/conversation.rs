@@ -18,7 +18,7 @@ use crate::{
         UserMessageDataSchema,
     },
     AgentMessage, AgentMessageData, AgentMessageMeta, AgentTodoList, ToolCallItem, UserMessage,
-    UserMessageData,
+    UserMessageData, UserMessageView,
 };
 
 pub struct ConversationPanel {
@@ -68,7 +68,7 @@ impl ConversationPanel {
         ElementId::from(("item", hasher.finish()))
     }
 
-    fn map_user_message(id: String, data: UserMessageDataSchema) -> UserMessage {
+    fn map_user_message(id: String, data: UserMessageDataSchema, cx: &mut Context<Self>) -> Entity<UserMessageView> {
         let mut user_data = UserMessageData::new(data.session_id);
 
         // Convert content blocks from schema to ACP types
@@ -77,7 +77,23 @@ impl ConversationPanel {
             user_data.contents.push(content_block);
         }
 
-        UserMessage::new(Self::get_id(&id), user_data)
+        // Create UserMessageView entity
+        cx.new(|cx| {
+            let data_entity = cx.new(|_| user_data.clone());
+
+            // Create ResourceItem entities for each resource in the data
+            let resource_items: Vec<Entity<crate::components::ResourceItem>> = user_data
+                .contents
+                .iter()
+                .filter_map(|content| crate::components::get_resource_info(content))
+                .map(|resource_info| cx.new(|_| crate::components::ResourceItem::new(resource_info)))
+                .collect();
+
+            UserMessageView {
+                data: data_entity,
+                resource_items,
+            }
+        })
     }
 
     /// Convert schema ContentBlock to ACP ContentBlock
@@ -180,7 +196,7 @@ impl ConversationPanel {
         plan_entry
     }
 
-    fn map_tool_call(item: ToolCallItemSchema) -> ToolCallItem {
+    fn map_tool_call(item: ToolCallItemSchema, cx: &mut Context<Self>) -> Entity<ToolCallItem> {
         let kind = item
             .data
             .kind
@@ -228,7 +244,12 @@ impl ConversationPanel {
         .status(status)
         .content(content);
 
-        ToolCallItem::new(Self::get_id(&item.id), tool_call).open(item.open)
+        let is_open = item.open;
+        cx.new(|cx| {
+            let mut tool_item = ToolCallItem::new(tool_call);
+            tool_item.set_open(is_open, cx);
+            tool_item
+        })
     }
 }
 
@@ -245,7 +266,7 @@ impl Render for ConversationPanel {
         for item in &self.items {
             match item {
                 ConversationItem::UserMessage { id, data } => {
-                    let user_msg = Self::map_user_message(id.clone(), data.clone());
+                    let user_msg = Self::map_user_message(id.clone(), data.clone(), cx);
                     children = children.child(user_msg);
                 }
                 ConversationItem::AgentMessage { id, data } => {
@@ -260,7 +281,7 @@ impl Render for ConversationPanel {
                 ConversationItem::ToolCallGroup { items } => {
                     let mut group = v_flex().pl_6().gap_2();
                     for tool_item in items {
-                        let tool_call = Self::map_tool_call(tool_item.clone());
+                        let tool_call = Self::map_tool_call(tool_item.clone(), cx);
                         group = group.child(tool_call);
                     }
                     children = children.child(group);

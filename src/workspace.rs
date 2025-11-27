@@ -13,9 +13,7 @@ use serde::Deserialize;
 use std::{sync::Arc, time::Duration};
 
 use crate::{
-    dock_panel::DockPanelContainer, AppState, AppTitleBar, ChatInputPanel, CodeEditorPanel,
-    ConversationPanel, CreateTaskFromWelcome, ListTaskPanel, Open, ShowConversationPanel,
-    ShowWelcomePanel, WelcomePanel,
+    AppState, AppTitleBar, ChatInputPanel, CodeEditorPanel, ConversationPanel, CreateTaskFromWelcome, ListTaskPanel, Open, ShowConversationPanel, ShowWelcomePanel, WelcomePanel, collapsible_story::CollapsibleStory, dock_panel::DockPanelContainer
 };
 
 #[derive(Action, Clone, PartialEq, Eq, Deserialize)]
@@ -387,9 +385,10 @@ impl DockWorkspace {
     ) {
         // Random pick up a panel to add
         let panel = match rand::random::<usize>() % 2 {
-            0 => Arc::new(DockPanelContainer::panel::<ListTaskPanel>(window, cx)),
-            1 => Arc::new(DockPanelContainer::panel::<CodeEditorPanel>(window, cx)),
-            _ => Arc::new(DockPanelContainer::panel::<ListTaskPanel>(window, cx)),
+            0 => Arc::new(DockPanelContainer::panel::<CollapsibleStory>(window, cx)),
+            // 1 => Arc::new(DockPanelContainer::panel::<CodeEditorPanel>(window, cx)),
+            2 => Arc::new(DockPanelContainer::panel::<CollapsibleStory>(window, cx)),
+            _ => Arc::new(DockPanelContainer::panel::<CollapsibleStory>(window, cx)),
         };
 
         self.dock_area.update(cx, |dock_area, cx| {

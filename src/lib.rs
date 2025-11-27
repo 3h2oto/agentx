@@ -13,6 +13,7 @@ mod task_list;
 mod task_turn_view;
 mod welcome_panel;
 pub mod workspace;
+pub mod collapsible_story;
 
 use std::sync::Arc;
 
