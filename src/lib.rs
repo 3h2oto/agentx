@@ -5,6 +5,7 @@ mod code_editor;
 mod components;
 mod config;
 mod conversation;
+mod conversation_acp;
 pub mod dock_panel;
 mod schemas;
 mod settings_window;
@@ -26,6 +27,7 @@ pub use chat_input::ChatInputPanel;
 pub use code_editor::CodeEditorPanel;
 pub use config::{AgentProcessConfig, Config, Settings};
 pub use conversation::ConversationPanel;
+pub use conversation_acp::ConversationPanelAcp;
 use gpui::{
     actions, div, prelude::FluentBuilder as _, px, size, Action, AnyElement, AnyView, App,
     AppContext, Bounds, Context, Entity, Global, IntoElement, KeyBinding, ParentElement, Pixels,
@@ -348,6 +350,7 @@ fn create_panel_view(
         "ListTaskPanel" => story!(ListTaskPanel),
         "CodeEditorPanel" => story!(CodeEditorPanel),
         "ConversationPanel" => story!(ConversationPanel),
+        "ConversationPanelAcp" => story!(ConversationPanelAcp),
         "ChatInputPanel" => story!(ChatInputPanel),
         "WelcomePanel" => story!(WelcomePanel),
         _ => {
