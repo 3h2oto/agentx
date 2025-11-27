@@ -5,7 +5,9 @@
       "Bash(cargo check:*)",
       "Bash(dir:*)",
       "Bash(findstr:*)",
-      "Bash(cat /Users/shihua/Code/AIAgent/gpui-component/examples/agentx/src/chat_input.rs)"
+      "Bash(cat /Users/shihua/Code/AIAgent/gpui-component/examples/agentx/src/chat_input.rs)",
+      "Bash(cp:*)",
+      "Bash(cargo run:*)"
     ],
     "deny": [],
     "ask": []
