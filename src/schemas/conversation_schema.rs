@@ -167,23 +167,38 @@ pub struct PlanEntrySchema {
     pub meta: Option<serde_json::Value>,
 }
 
+/// Tool call item schema following ACP's ToolCall format
 #[derive(Debug, Deserialize, Clone)]
 pub struct ToolCallItemSchema {
     pub id: String,
-    pub data: ToolCallDataSchema,
+    pub data: ToolCallSchema,
     pub open: bool,
 }
 
+/// Tool call schema aligned with ACP's ToolCall structure
 #[derive(Debug, Deserialize, Clone)]
-pub struct ToolCallDataSchema {
+#[serde(rename_all = "camelCase")]
+pub struct ToolCallSchema {
+    /// Unique identifier for this tool call
     pub tool_call_id: String,
+    /// Human-readable title describing what the tool is doing
     pub title: String,
-    pub kind: String,
-    pub status: String,
-    pub content: Vec<ToolCallContentSchema>,
+    /// The category of tool being invoked (read, edit, search, etc.)
+    #[serde(default)]
+    pub kind: Option<String>,
+    /// Current execution status (pending, in_progress, completed, failed)
+    #[serde(default)]
+    pub status: Option<String>,
+    /// Content produced by the tool call
+    #[serde(default)]
+    pub content: Vec<ToolCallContentItemSchema>,
+    /// Extension point for implementations
+    #[serde(rename = "_meta")]
+    pub meta: Option<serde_json::Value>,
 }
 
+/// Tool call content item schema (simplified for mock data)
 #[derive(Debug, Deserialize, Clone)]
-pub struct ToolCallContentSchema {
+pub struct ToolCallContentItemSchema {
     pub text: String,
 }

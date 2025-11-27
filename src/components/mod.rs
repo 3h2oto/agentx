@@ -12,8 +12,6 @@ pub use agent_todo_list::{AgentTodoList, AgentTodoListView, PlanMeta};
 pub use chat_input_box::ChatInputBox;
 pub use task_list_item::TaskListItem;
 
-pub use tool_call_item::{
-    ToolCallContent, ToolCallData, ToolCallItem, ToolCallItemView, ToolCallKind, ToolCallStatus,
-};
+pub use tool_call_item::{ToolCallItem, ToolCallItemView, ToolCallStatusExt, ToolKindExt};
 
 pub use user_message::{UserMessage, UserMessageData, UserMessageView};

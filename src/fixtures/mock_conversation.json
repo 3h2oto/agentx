@@ -80,10 +80,10 @@
             "type": "ToolCall",
             "id": "tool-1",
             "data": {
-              "tool_call_id": "call_001",
+              "toolCallId": "call_001",
               "title": "Reading auth.rs",
-              "kind": "Read",
-              "status": "Completed",
+              "kind": "read",
+              "status": "completed",
               "content": [
                 {
                   "text": "Successfully read auth.rs (45 lines)"
@@ -96,10 +96,10 @@
             "type": "ToolCall",
             "id": "tool-2",
             "data": {
-              "tool_call_id": "call_002",
+              "toolCallId": "call_002",
               "title": "Searching for password hashing libraries",
-              "kind": "Search",
-              "status": "Completed",
+              "kind": "search",
+              "status": "completed",
               "content": [
                 {
                   "text": "Found bcrypt, argon2, and sha2 crates.\nRecommending argon2 for modern password hashing."
@@ -136,10 +136,10 @@
             "type": "ToolCall",
             "id": "tool-3",
             "data": {
-              "tool_call_id": "call_003",
+              "toolCallId": "call_003",
               "title": "Editing auth.rs with secure hashing",
-              "kind": "Edit",
-              "status": "Completed",
+              "kind": "edit",
+              "status": "completed",
               "content": [
                 {
                   "text": "Modified auth.rs:\n- Added argon2 dependency\n- Replaced plain text comparison with verify_password()\n- Added constant-time comparison\n\n+15 lines, -3 lines"
@@ -189,10 +189,10 @@
             "type": "ToolCall",
             "id": "tool-4",
             "data": {
-              "tool_call_id": "call_004",
+              "toolCallId": "call_004",
               "title": "Creating rate_limiter.rs",
-              "kind": "Edit",
-              "status": "Completed",
+              "kind": "edit",
+              "status": "completed",
               "content": [
                 {
                   "text": "Created rate_limiter.rs with TokenBucket implementation:\n- Max 5 attempts per 15 minutes\n- Exponential backoff\n- IP-based tracking\n\n+87 lines"
@@ -205,10 +205,10 @@
             "type": "ToolCall",
             "id": "tool-5",
             "data": {
-              "tool_call_id": "call_005",
+              "toolCallId": "call_005",
               "title": "Running security tests",
-              "kind": "Execute",
-              "status": "InProgress",
+              "kind": "execute",
+              "status": "in_progress",
               "content": [
                 {
                   "text": "Running test suite...\n✓ test_password_hashing ... ok\n✓ test_timing_attack_prevention ... ok\n→ test_rate_limiting ... running"
@@ -305,10 +305,10 @@
             "type": "ToolCall",
             "id": "tool-6",
             "data": {
-              "tool_call_id": "call_006",
+              "toolCallId": "call_006",
               "title": "Analyzing session.rs for vulnerabilities",
-              "kind": "Think",
-              "status": "Completed",
+              "kind": "think",
+              "status": "completed",
               "content": [
                 {
                   "text": "Analysis complete:\n\nIssues found:\n1. No session expiration\n2. Token generation method not specified\n3. No secure storage mechanism\n4. Missing CSRF protection\n\nRecommendations:\n- Add expiration timestamp\n- Use cryptographically secure random tokens\n- Store sessions in secure backend\n- Implement CSRF tokens"

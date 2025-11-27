@@ -4,19 +4,21 @@ use gpui::{
 };
 
 use agent_client_protocol_schema::{
-    BlobResourceContents, ContentBlock, ContentChunk, EmbeddedResource, EmbeddedResourceResource,
-    ImageContent, Plan, PlanEntry, PlanEntryPriority, PlanEntryStatus, ResourceLink, TextContent,
-    TextResourceContents,
+    BlobResourceContents, Content, ContentBlock, ContentChunk, EmbeddedResource,
+    EmbeddedResourceResource, ImageContent, Plan, PlanEntry, PlanEntryPriority, PlanEntryStatus,
+    ResourceLink, TextContent, TextResourceContents, ToolCall, ToolCallContent, ToolCallId,
+    ToolCallStatus, ToolKind,
 };
 use gpui_component::{scroll::ScrollbarAxis, v_flex, ActiveTheme, StyledExt};
 
 use crate::{
     conversation_schema::{
         AgentMessageDataSchema, ContentBlockSchema, ConversationItem, PlanEntrySchema, PlanSchema,
-        ResourceContentsSchema, ToolCallItemSchema, UserMessageDataSchema,
+        ResourceContentsSchema, ToolCallContentItemSchema, ToolCallItemSchema, ToolCallSchema,
+        UserMessageDataSchema,
     },
-    AgentMessage, AgentMessageData, AgentMessageMeta, AgentTodoList, PlanMeta, ToolCallContent,
-    ToolCallData, ToolCallItem, ToolCallKind, ToolCallStatus, UserMessage, UserMessageData,
+    AgentMessage, AgentMessageData, AgentMessageMeta, AgentTodoList, ToolCallItem, UserMessage,
+    UserMessageData,
 };
 
 pub struct ConversationPanel {
@@ -179,28 +181,54 @@ impl ConversationPanel {
     }
 
     fn map_tool_call(item: ToolCallItemSchema) -> ToolCallItem {
-        let kind = ToolCallKind::from_str(&item.data.kind.to_lowercase());
-        let status = match item.data.status.as_str() {
-            "Pending" => ToolCallStatus::Pending,
-            "InProgress" => ToolCallStatus::InProgress,
-            "Completed" => ToolCallStatus::Completed,
-            "Failed" => ToolCallStatus::Failed,
-            _ => ToolCallStatus::Pending,
-        };
+        let kind = item
+            .data
+            .kind
+            .as_deref()
+            .and_then(|k| match k.to_lowercase().as_str() {
+                "read" => Some(ToolKind::Read),
+                "edit" => Some(ToolKind::Edit),
+                "delete" => Some(ToolKind::Delete),
+                "move" => Some(ToolKind::Move),
+                "search" => Some(ToolKind::Search),
+                "execute" => Some(ToolKind::Execute),
+                "think" => Some(ToolKind::Think),
+                "fetch" => Some(ToolKind::Fetch),
+                "switch_mode" => Some(ToolKind::SwitchMode),
+                _ => Some(ToolKind::Other),
+            })
+            .unwrap_or(ToolKind::Other);
 
-        let content = item
+        let status = item
+            .data
+            .status
+            .as_deref()
+            .and_then(|s| match s.to_lowercase().as_str() {
+                "pending" => Some(ToolCallStatus::Pending),
+                "in_progress" | "inprogress" => Some(ToolCallStatus::InProgress),
+                "completed" => Some(ToolCallStatus::Completed),
+                "failed" => Some(ToolCallStatus::Failed),
+                _ => Some(ToolCallStatus::Pending),
+            })
+            .unwrap_or(ToolCallStatus::Pending);
+
+        // Convert simple text content to ACP ToolCallContent
+        let content: Vec<ToolCallContent> = item
             .data
             .content
             .into_iter()
-            .map(|c| ToolCallContent::new(c.text))
+            .map(|c| ToolCallContent::Content(Content::new(ContentBlock::from(c.text))))
             .collect();
 
-        let data = ToolCallData::new(item.data.tool_call_id, item.data.title)
-            .with_kind(kind)
-            .with_status(status)
-            .with_content(content);
+        let tool_call = ToolCall::new(
+            ToolCallId::new(item.data.tool_call_id),
+            item.data.title,
+        )
+        .kind(kind)
+        .status(status)
+        .content(content);
 
-        ToolCallItem::new(Self::get_id(&item.id), data).open(item.open)
+        ToolCallItem::new(Self::get_id(&item.id), tool_call).open(item.open)
     }
 }
 
