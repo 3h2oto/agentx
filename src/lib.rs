@@ -42,10 +42,12 @@ pub use welcome_panel::WelcomePanel;
 // Export components
 pub use components::{
     AgentMessage, AgentMessageData, AgentMessageMeta, AgentMessageView, AgentTodoList,
-    AgentTodoListView, PlanEntry, PlanEntryPriority, PlanEntryStatus, ToolCallContent,
-    ToolCallData, ToolCallItem, ToolCallItemView, ToolCallKind, ToolCallStatus, UserMessage,
-    UserMessageData, UserMessageView,
+    AgentTodoListView, PlanMeta, ToolCallContent, ToolCallData, ToolCallItem, ToolCallItemView,
+    ToolCallKind, ToolCallStatus, UserMessage, UserMessageData, UserMessageView,
 };
+
+// Re-export ACP Plan types for convenience
+pub use agent_client_protocol_schema::{Plan, PlanEntry, PlanEntryPriority, PlanEntryStatus};
 
 use gpui_component::{
     dock::{register_panel, PanelControl, PanelInfo},

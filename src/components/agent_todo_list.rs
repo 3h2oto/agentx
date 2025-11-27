@@ -3,85 +3,17 @@ use gpui::{
     ParentElement, Render, RenderOnce, SharedString, Styled, Window,
 };
 
+use agent_client_protocol_schema::{Plan, PlanEntry, PlanEntryPriority, PlanEntryStatus};
 use gpui_component::{h_flex, v_flex, ActiveTheme, Icon, IconName};
+use serde::{Deserialize, Serialize};
 
-/// Plan entry priority levels
-#[derive(Clone, Debug, PartialEq)]
-pub enum PlanEntryPriority {
-    High,
-    Medium,
-    Low,
-}
-
-impl Default for PlanEntryPriority {
-    fn default() -> Self {
-        Self::Medium
-    }
-}
-
-impl PlanEntryPriority {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::High => "high",
-            Self::Medium => "medium",
-            Self::Low => "low",
-        }
-    }
-}
-
-/// Plan entry status
-#[derive(Clone, Debug, PartialEq)]
-pub enum PlanEntryStatus {
-    Pending,
-    InProgress,
-    Completed,
-}
-
-impl Default for PlanEntryStatus {
-    fn default() -> Self {
-        Self::Pending
-    }
-}
-
-impl PlanEntryStatus {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Pending => "pending",
-            Self::InProgress => "in_progress",
-            Self::Completed => "completed",
-        }
-    }
-}
-
-/// A single plan entry representing a task or goal
-#[derive(Clone, Debug)]
-pub struct PlanEntry {
-    /// A human-readable description of what this task aims to accomplish
-    pub content: SharedString,
-    /// The relative importance of this task
-    pub priority: PlanEntryPriority,
-    /// The current execution status of this task
-    pub status: PlanEntryStatus,
-}
-
-impl PlanEntry {
-    pub fn new(content: impl Into<SharedString>) -> Self {
-        Self {
-            content: content.into(),
-            priority: PlanEntryPriority::default(),
-            status: PlanEntryStatus::default(),
-        }
-    }
-
-    pub fn with_priority(mut self, priority: PlanEntryPriority) -> Self {
-        self.priority = priority;
-        self
-    }
-
-    pub fn with_status(mut self, status: PlanEntryStatus) -> Self {
-        self.status = status;
-        self
-    }
+/// Extended metadata for Plan (stored in Plan's meta field)
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlanMeta {
+    /// Optional title for the plan
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
 }
 
 /// A list item component for displaying a plan entry
@@ -112,6 +44,8 @@ impl RenderOnce for PlanEntryItem {
             PlanEntryStatus::Completed => (IconName::CircleCheck, cx.theme().green),
             PlanEntryStatus::InProgress => (IconName::LoaderCircle, cx.theme().accent),
             PlanEntryStatus::Pending => (IconName::Dash, cx.theme().muted_foreground),
+            // Handle future variants
+            _ => (IconName::Dash, cx.theme().muted_foreground),
         };
 
         div().id(self.id).child(
@@ -129,47 +63,85 @@ impl RenderOnce for PlanEntryItem {
                         .text_size(px(14.))
                         .text_color(text_color)
                         .line_height(px(20.))
-                        .child(self.entry.content),
+                        .child(self.entry.content.clone()),
                 ),
         )
     }
 }
 
 /// Agent Todo List component for displaying plan execution progress
+/// Based on ACP's Plan structure from SessionUpdate::Plan
 pub struct AgentTodoList {
-    entries: Vec<PlanEntry>,
-    title: SharedString,
+    /// The plan data following ACP's Plan structure
+    plan: Plan,
+    /// Extended metadata (title, etc.) - extracted from plan.meta
+    meta: PlanMeta,
 }
 
 impl AgentTodoList {
     pub fn new() -> Self {
         Self {
-            entries: Vec::new(),
-            title: "Tasks".into(),
+            plan: Plan::new(Vec::new()),
+            meta: PlanMeta::default(),
         }
     }
 
-    /// Set the title of the todo list
-    pub fn title(mut self, title: impl Into<SharedString>) -> Self {
-        self.title = title.into();
+    /// Create from an ACP Plan
+    pub fn from_plan(plan: Plan) -> Self {
+        // Extract title from meta if present
+        let meta = plan
+            .meta
+            .as_ref()
+            .and_then(|m| serde_json::from_value::<PlanMeta>(m.clone()).ok())
+            .unwrap_or_default();
+
+        Self { plan, meta }
+    }
+
+    /// Set the title of the todo list (stored in meta)
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.meta.title = Some(title.into());
         self
     }
 
     /// Set the plan entries
     pub fn entries(mut self, entries: Vec<PlanEntry>) -> Self {
-        self.entries = entries;
+        self.plan.entries = entries;
         self
     }
 
     /// Add a single entry
     pub fn entry(mut self, entry: PlanEntry) -> Self {
-        self.entries.push(entry);
+        self.plan.entries.push(entry);
         self
+    }
+
+    /// Add a simple entry with content, priority, and status
+    pub fn add_entry(
+        mut self,
+        content: impl Into<String>,
+        priority: PlanEntryPriority,
+        status: PlanEntryStatus,
+    ) -> Self {
+        self.plan
+            .entries
+            .push(PlanEntry::new(content, priority, status));
+        self
+    }
+
+    /// Get the underlying Plan
+    pub fn into_plan(mut self) -> Plan {
+        // Store meta back into plan
+        if self.meta.title.is_some() {
+            self.plan.meta = serde_json::to_value(&self.meta).ok();
+        }
+        self.plan
     }
 
     /// Get the count of completed tasks
     fn completed_count(&self) -> usize {
-        self.entries
+        self.plan
+            .entries
             .iter()
             .filter(|e| e.status == PlanEntryStatus::Completed)
             .count()
@@ -177,7 +149,12 @@ impl AgentTodoList {
 
     /// Get the total count of tasks
     fn total_count(&self) -> usize {
-        self.entries.len()
+        self.plan.entries.len()
+    }
+
+    /// Get the display title
+    fn display_title(&self) -> &str {
+        self.meta.title.as_deref().unwrap_or("Tasks")
     }
 }
 
@@ -191,7 +168,7 @@ impl IntoElement for AgentTodoList {
     type Element = gpui::Div;
 
     fn into_element(self) -> Self::Element {
-        let title = self.title.clone();
+        let title = self.display_title().to_string();
         let completed = self.completed_count();
         let total = self.total_count();
 
@@ -227,7 +204,7 @@ impl IntoElement for AgentTodoList {
                 v_flex()
                     .gap_2()
                     .w_full()
-                    .children(self.entries.into_iter().enumerate().map(|(i, entry)| {
+                    .children(self.plan.entries.into_iter().enumerate().map(|(i, entry)| {
                         PlanEntryItem::new(SharedString::from(format!("plan-entry-{}", i)), entry)
                     })),
             )
@@ -236,56 +213,85 @@ impl IntoElement for AgentTodoList {
 
 /// A stateful wrapper around AgentTodoList that can be used as a GPUI view
 pub struct AgentTodoListView {
-    entries: Entity<Vec<PlanEntry>>,
-    title: SharedString,
+    plan: Entity<Plan>,
+    meta: PlanMeta,
 }
 
 impl AgentTodoListView {
     pub fn new(_window: &mut Window, cx: &mut App) -> Entity<Self> {
         cx.new(|cx| {
-            let entries = cx.new(|_| Vec::new());
+            let plan = cx.new(|_| Plan::new(Vec::new()));
             Self {
-                entries,
-                title: "Tasks".into(),
+                plan,
+                meta: PlanMeta::default(),
             }
         })
     }
 
-    /// Create a new view with entries
-    pub fn with_entries(
-        entries: Vec<PlanEntry>,
-        _window: &mut Window,
-        cx: &mut App,
-    ) -> Entity<Self> {
+    /// Create a new view with a Plan
+    pub fn with_plan(plan: Plan, _window: &mut Window, cx: &mut App) -> Entity<Self> {
+        // Extract title from meta if present
+        let meta = plan
+            .meta
+            .as_ref()
+            .and_then(|m| serde_json::from_value::<PlanMeta>(m.clone()).ok())
+            .unwrap_or_default();
+
         cx.new(|cx| {
-            let entries_entity = cx.new(|_| entries);
+            let plan_entity = cx.new(|_| plan);
             Self {
-                entries: entries_entity,
-                title: "Tasks".into(),
+                plan: plan_entity,
+                meta,
             }
         })
+    }
+
+    /// Create a new view with entries (convenience method)
+    pub fn with_entries(entries: Vec<PlanEntry>, _window: &mut Window, cx: &mut App) -> Entity<Self> {
+        cx.new(|cx| {
+            let plan_entity = cx.new(|_| Plan::new(entries));
+            Self {
+                plan: plan_entity,
+                meta: PlanMeta::default(),
+            }
+        })
+    }
+
+    /// Update the entire plan
+    pub fn set_plan(&mut self, plan: Plan, cx: &mut App) {
+        // Extract title from meta if present
+        self.meta = plan
+            .meta
+            .as_ref()
+            .and_then(|m| serde_json::from_value::<PlanMeta>(m.clone()).ok())
+            .unwrap_or_default();
+
+        self.plan.update(cx, |p, cx| {
+            *p = plan;
+            cx.notify();
+        });
     }
 
     /// Update the entries
     pub fn set_entries(&mut self, entries: Vec<PlanEntry>, cx: &mut App) {
-        self.entries.update(cx, |e, cx| {
-            *e = entries;
+        self.plan.update(cx, |p, cx| {
+            p.entries = entries;
             cx.notify();
         });
     }
 
     /// Add a new entry
     pub fn add_entry(&mut self, entry: PlanEntry, cx: &mut App) {
-        self.entries.update(cx, |e, cx| {
-            e.push(entry);
+        self.plan.update(cx, |p, cx| {
+            p.entries.push(entry);
             cx.notify();
         });
     }
 
     /// Update an entry at a specific index
     pub fn update_entry(&mut self, index: usize, entry: PlanEntry, cx: &mut App) {
-        self.entries.update(cx, |e, cx| {
-            if let Some(existing) = e.get_mut(index) {
+        self.plan.update(cx, |p, cx| {
+            if let Some(existing) = p.entries.get_mut(index) {
                 *existing = entry;
                 cx.notify();
             }
@@ -294,27 +300,30 @@ impl AgentTodoListView {
 
     /// Update the status of an entry at a specific index
     pub fn update_status(&mut self, index: usize, status: PlanEntryStatus, cx: &mut App) {
-        self.entries.update(cx, |e, cx| {
-            if let Some(entry) = e.get_mut(index) {
-                entry.status = status;
+        self.plan.update(cx, |p, cx| {
+            if let Some(entry) = p.entries.get_mut(index) {
+                entry.status = status.clone();
                 cx.notify();
             }
         });
     }
 
     /// Set the title
-    pub fn set_title(&mut self, title: impl Into<SharedString>, cx: &mut Context<Self>) {
-        self.title = title.into();
+    pub fn set_title(&mut self, title: impl Into<String>, cx: &mut Context<Self>) {
+        self.meta.title = Some(title.into());
         cx.notify();
     }
 }
 
 impl Render for AgentTodoListView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let entries = self.entries.read(cx).clone();
+        let plan = self.plan.read(cx).clone();
 
-        AgentTodoList::new()
-            .title(self.title.clone())
-            .entries(entries)
+        let mut todo_list = AgentTodoList::from_plan(plan);
+        // Override with local meta if set
+        if self.meta.title.is_some() {
+            todo_list.meta = self.meta.clone();
+        }
+        todo_list
     }
 }

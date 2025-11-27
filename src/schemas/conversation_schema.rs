@@ -11,10 +11,8 @@ pub enum ConversationItem {
         id: String,
         data: AgentMessageDataSchema,
     },
-    AgentTodoList {
-        title: String,
-        entries: Vec<PlanEntrySchema>,
-    },
+    /// Plan item following ACP's SessionUpdate::Plan format
+    Plan(PlanSchema),
     ToolCallGroup {
         items: Vec<ToolCallItemSchema>,
     },
@@ -143,11 +141,30 @@ pub struct AgentMessageMetaSchema {
     pub is_complete: bool,
 }
 
+/// Plan schema aligned with ACP's Plan structure from SessionUpdate::Plan
 #[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct PlanSchema {
+    /// The list of tasks to be accomplished
+    pub entries: Vec<PlanEntrySchema>,
+    /// Extension point for implementations (can contain title, etc.)
+    #[serde(rename = "_meta")]
+    pub meta: Option<serde_json::Value>,
+}
+
+/// Plan entry schema aligned with ACP's PlanEntry
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct PlanEntrySchema {
+    /// Human-readable description of what this task aims to accomplish
     pub content: String,
+    /// The relative importance of this task (high, medium, low)
     pub priority: String,
+    /// Current execution status (pending, in_progress, completed)
     pub status: String,
+    /// Extension point for implementations
+    #[serde(rename = "_meta")]
+    pub meta: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

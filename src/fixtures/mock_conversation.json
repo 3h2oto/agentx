@@ -41,35 +41,37 @@
     }
   },
   {
-    "type": "AgentTodoList",
-    "title": "Refactoring Plan",
+    "type": "Plan",
     "entries": [
       {
         "content": "Replace plain text password comparison with secure hashing",
-        "priority": "High",
-        "status": "Completed"
+        "priority": "high",
+        "status": "completed"
       },
       {
         "content": "Add timing attack prevention",
-        "priority": "High",
-        "status": "Completed"
+        "priority": "high",
+        "status": "completed"
       },
       {
         "content": "Implement rate limiting for authentication attempts",
-        "priority": "High",
-        "status": "InProgress"
+        "priority": "high",
+        "status": "in_progress"
       },
       {
         "content": "Add comprehensive error handling",
-        "priority": "Medium",
-        "status": "Pending"
+        "priority": "medium",
+        "status": "pending"
       },
       {
         "content": "Write security tests",
-        "priority": "Medium",
-        "status": "Pending"
+        "priority": "medium",
+        "status": "pending"
       }
-    ]
+    ],
+    "_meta": {
+      "title": "Refactoring Plan"
+    }
   },
   {
     "type": "ToolCallGroup",
@@ -259,40 +261,42 @@
     }
   },
   {
-    "type": "AgentTodoList",
-    "title": "Security Audit Progress",
+    "type": "Plan",
     "entries": [
       {
         "content": "Audit authentication code",
-        "priority": "High",
-        "status": "Completed"
+        "priority": "high",
+        "status": "completed"
       },
       {
         "content": "Implement secure password hashing",
-        "priority": "High",
-        "status": "Completed"
+        "priority": "high",
+        "status": "completed"
       },
       {
         "content": "Add rate limiting",
-        "priority": "High",
-        "status": "Completed"
+        "priority": "high",
+        "status": "completed"
       },
       {
         "content": "Review session management",
-        "priority": "High",
-        "status": "InProgress"
+        "priority": "high",
+        "status": "in_progress"
       },
       {
         "content": "Add session expiration",
-        "priority": "Medium",
-        "status": "Pending"
+        "priority": "medium",
+        "status": "pending"
       },
       {
         "content": "Implement CSRF protection",
-        "priority": "Medium",
-        "status": "Pending"
+        "priority": "medium",
+        "status": "pending"
       }
-    ]
+    ],
+    "_meta": {
+      "title": "Security Audit Progress"
+    }
   },
   {
     "type": "ToolCallGroup",

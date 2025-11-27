@@ -7,9 +7,7 @@ mod user_message;
 
 pub use agent_message::{AgentMessage, AgentMessageData, AgentMessageMeta, AgentMessageView};
 
-pub use agent_todo_list::{
-    AgentTodoList, AgentTodoListView, PlanEntry, PlanEntryPriority, PlanEntryStatus,
-};
+pub use agent_todo_list::{AgentTodoList, AgentTodoListView, PlanMeta};
 
 pub use chat_input_box::ChatInputBox;
 pub use task_list_item::TaskListItem;

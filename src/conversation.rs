@@ -5,18 +5,18 @@ use gpui::{
 
 use agent_client_protocol_schema::{
     BlobResourceContents, ContentBlock, ContentChunk, EmbeddedResource, EmbeddedResourceResource,
-    ImageContent, ResourceLink, TextContent, TextResourceContents,
+    ImageContent, Plan, PlanEntry, PlanEntryPriority, PlanEntryStatus, ResourceLink, TextContent,
+    TextResourceContents,
 };
 use gpui_component::{scroll::ScrollbarAxis, v_flex, ActiveTheme, StyledExt};
 
 use crate::{
     conversation_schema::{
-        AgentMessageDataSchema, ContentBlockSchema, ConversationItem, PlanEntrySchema,
+        AgentMessageDataSchema, ContentBlockSchema, ConversationItem, PlanEntrySchema, PlanSchema,
         ResourceContentsSchema, ToolCallItemSchema, UserMessageDataSchema,
     },
-    AgentMessage, AgentMessageData, AgentMessageMeta, AgentTodoList, PlanEntry, PlanEntryPriority,
-    PlanEntryStatus, ToolCallContent, ToolCallData, ToolCallItem, ToolCallKind, ToolCallStatus,
-    UserMessage, UserMessageData,
+    AgentMessage, AgentMessageData, AgentMessageMeta, AgentTodoList, PlanMeta, ToolCallContent,
+    ToolCallData, ToolCallItem, ToolCallKind, ToolCallStatus, UserMessage, UserMessageData,
 };
 
 pub struct ConversationPanel {
@@ -138,29 +138,44 @@ impl ConversationPanel {
         AgentMessage::new(Self::get_id(&id), agent_data)
     }
 
-    fn map_todo_list(title: String, entries: Vec<PlanEntrySchema>) -> AgentTodoList {
-        let plan_entries = entries
+    fn map_plan(plan_schema: PlanSchema) -> AgentTodoList {
+        // Convert PlanEntrySchema to ACP PlanEntry
+        let plan_entries: Vec<PlanEntry> = plan_schema
+            .entries
             .into_iter()
-            .map(|e| {
-                let priority = match e.priority.as_str() {
-                    "High" => PlanEntryPriority::High,
-                    "Medium" => PlanEntryPriority::Medium,
-                    "Low" => PlanEntryPriority::Low,
-                    _ => PlanEntryPriority::Medium,
-                };
-                let status = match e.status.as_str() {
-                    "Pending" => PlanEntryStatus::Pending,
-                    "InProgress" => PlanEntryStatus::InProgress,
-                    "Completed" => PlanEntryStatus::Completed,
-                    _ => PlanEntryStatus::Pending,
-                };
-                PlanEntry::new(e.content)
-                    .with_priority(priority)
-                    .with_status(status)
-            })
+            .map(|e| Self::map_plan_entry(e))
             .collect();
 
-        AgentTodoList::new().title(title).entries(plan_entries)
+        // Create ACP Plan
+        let mut plan = Plan::new(plan_entries);
+
+        // Copy meta from schema if present
+        if let Some(meta) = plan_schema.meta {
+            plan.meta = Some(meta);
+        }
+
+        AgentTodoList::from_plan(plan)
+    }
+
+    fn map_plan_entry(entry: PlanEntrySchema) -> PlanEntry {
+        let priority = match entry.priority.to_lowercase().as_str() {
+            "high" => PlanEntryPriority::High,
+            "medium" => PlanEntryPriority::Medium,
+            "low" => PlanEntryPriority::Low,
+            _ => PlanEntryPriority::Medium,
+        };
+        let status = match entry.status.to_lowercase().as_str() {
+            "pending" => PlanEntryStatus::Pending,
+            "in_progress" => PlanEntryStatus::InProgress,
+            "completed" => PlanEntryStatus::Completed,
+            _ => PlanEntryStatus::Pending,
+        };
+
+        let mut plan_entry = PlanEntry::new(entry.content, priority, status);
+        if let Some(meta) = entry.meta {
+            plan_entry = plan_entry.meta(meta);
+        }
+        plan_entry
     }
 
     fn map_tool_call(item: ToolCallItemSchema) -> ToolCallItem {
@@ -209,8 +224,8 @@ impl Render for ConversationPanel {
                     let agent_msg = Self::map_agent_message(id.clone(), data.clone());
                     children = children.child(agent_msg);
                 }
-                ConversationItem::AgentTodoList { title, entries } => {
-                    let todo_list = Self::map_todo_list(title.clone(), entries.clone());
+                ConversationItem::Plan(plan_schema) => {
+                    let todo_list = Self::map_plan(plan_schema.clone());
                     // Apply indentation for todo list
                     children = children.child(v_flex().pl_6().child(todo_list));
                 }
