@@ -3,14 +3,15 @@ use gpui::{
     ParentElement, Pixels, Render, Styled, Window,
 };
 
+use agent_client_protocol_schema::{ContentBlock, ContentChunk, ImageContent, TextContent};
 use gpui_component::{scroll::ScrollbarAxis, v_flex, ActiveTheme, StyledExt};
 
 use crate::{
     conversation_schema::{
-        AgentMessageDataSchema, ConversationItem, MessageContentSchema, PlanEntrySchema,
+        AgentMessageDataSchema, ContentBlockSchema, ConversationItem, MessageContentSchema, PlanEntrySchema,
         ToolCallItemSchema, UserMessageDataSchema,
     },
-    AgentMessage, AgentMessageContent, AgentMessageData, AgentTodoList, MessageContent, PlanEntry,
+    AgentMessage, AgentMessageData, AgentMessageMeta, AgentTodoList, MessageContent, PlanEntry,
     PlanEntryPriority, PlanEntryStatus, ResourceContent, ToolCallContent, ToolCallData,
     ToolCallItem, ToolCallKind, ToolCallStatus, UserMessage, UserMessageData,
 };
@@ -81,16 +82,30 @@ impl ConversationPanel {
 
     fn map_agent_message(id: String, data: AgentMessageDataSchema) -> AgentMessage {
         let mut agent_data = AgentMessageData::new(data.session_id);
-        if let Some(name) = data.agent_name {
-            agent_data = agent_data.with_agent_name(name);
+
+        // Set metadata from _meta field
+        if let Some(meta) = data.meta {
+            agent_data.meta = AgentMessageMeta {
+                agent_name: meta.agent_name,
+                is_complete: meta.is_complete,
+            };
         }
-        if data.is_complete {
-            agent_data = agent_data.complete();
+
+        // Convert content chunks
+        for chunk_schema in data.chunks {
+            let content_block = match chunk_schema.content {
+                ContentBlockSchema::Text(text) => ContentBlock::Text(TextContent::new(text.text)),
+                ContentBlockSchema::Image(image) => {
+                    ContentBlock::Image(ImageContent::new(image.data, image.mime_type))
+                }
+            };
+            let mut content_chunk = ContentChunk::new(content_block);
+            if let Some(meta) = chunk_schema.meta {
+                content_chunk = content_chunk.meta(meta);
+            }
+            agent_data.chunks.push(content_chunk);
         }
-        for chunk in data.chunks {
-            // Assuming all chunks are text for now as per schema
-            agent_data = agent_data.add_chunk(AgentMessageContent::text(chunk.text));
-        }
+
         AgentMessage::new(Self::get_id(&id), agent_data)
     }
 

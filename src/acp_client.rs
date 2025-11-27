@@ -556,6 +556,16 @@ impl acp::Client for CliClient {
         args: acp::SessionNotification,
     ) -> acp::Result<(), acp::Error> {
         match args.update {
+            acp::SessionUpdate::UserMessageChunk(acp::ContentChunk { content, .. }) => {
+                  let text = match content {
+                    acp::ContentBlock::Text(text_content) => text_content.text,
+                    acp::ContentBlock::Image(_) => "<image>".into(),
+                    acp::ContentBlock::Audio(_) => "<audio>".into(),
+                    acp::ContentBlock::ResourceLink(resource_link) => resource_link.uri,
+                    acp::ContentBlock::Resource(_) => "<resource>".into(),
+                };
+                println!("\n| [{}] {}", self.agent_name, text);
+            }
             acp::SessionUpdate::AgentMessageChunk(acp::ContentChunk { content, .. }) => {
                 let text = match content {
                     acp::ContentBlock::Text(text_content) => text_content.text,
@@ -566,7 +576,34 @@ impl acp::Client for CliClient {
                 };
                 println!("\n| [{}] {}", self.agent_name, text);
             }
-            _ => {}
+            acp::SessionUpdate::AgentThoughtChunk(acp::ContentChunk { content, .. }) => {
+                let text = match content {
+                    acp::ContentBlock::Text(text_content) => text_content.text,
+                    acp::ContentBlock::Image(_) => "<image>".into(),
+                    acp::ContentBlock::Audio(_) => "<audio>".into(),
+                    acp::ContentBlock::ResourceLink(resource_link) => resource_link.uri,
+                    acp::ContentBlock::Resource(_) => "<resource>".into(),
+                };
+                println!("\n| [{}] {}", self.agent_name, text);
+            }
+            acp::SessionUpdate::ToolCall(tool_call) => {
+                let tool_call_id = tool_call.id.to_string();
+            }
+            acp::SessionUpdate::ToolCallUpdate(update) => {
+                let tool_call_id = update.id.to_string();
+
+            }
+            acp::SessionUpdate::Plan(plan) => {
+  
+
+            }
+            acp::SessionUpdate::CurrentModeUpdate(mode_update) => {
+  
+
+            }
+            acp::SessionUpdate::AvailableCommandsUpdate { .. } => {
+
+            }
         }
         Ok(())
     }

@@ -24,15 +24,19 @@
     "type": "AgentMessage",
     "id": "msg-2",
     "data": {
-      "session_id": "sess_001",
-      "agent_name": "Claude",
+      "sessionId": "sess_001",
       "chunks": [
         {
-          "content_type": "Text",
-          "text": "I'll help you refactor the authentication code. I've identified several security issues that need to be addressed. Let me create a plan for the improvements."
+          "content": {
+            "type": "text",
+            "text": "I'll help you refactor the authentication code. I've identified several security issues that need to be addressed. Let me create a plan for the improvements."
+          }
         }
       ],
-      "is_complete": true
+      "_meta": {
+        "agentName": "Claude",
+        "isComplete": true
+      }
     }
   },
   {
@@ -107,15 +111,19 @@
     "type": "AgentMessage",
     "id": "msg-6",
     "data": {
-      "session_id": "sess_001",
-      "agent_name": "Claude",
+      "sessionId": "sess_001",
       "chunks": [
         {
-          "content_type": "Text",
-          "text": "Now I'll implement the secure password hashing. I'm using Argon2, which is the recommended algorithm for password hashing as of 2023."
+          "content": {
+            "type": "text",
+            "text": "Now I'll implement the secure password hashing. I'm using Argon2, which is the recommended algorithm for password hashing as of 2023."
+          }
         }
       ],
-      "is_complete": true
+      "_meta": {
+        "agentName": "Claude",
+        "isComplete": true
+      }
     }
   },
   {
@@ -156,15 +164,19 @@
     "type": "AgentMessage",
     "id": "msg-9",
     "data": {
-      "session_id": "sess_001",
-      "agent_name": "Claude",
+      "sessionId": "sess_001",
       "chunks": [
         {
-          "content_type": "Text",
-          "text": "Absolutely! Rate limiting is crucial for preventing brute force attacks. I'll implement a rate limiter using a token bucket algorithm."
+          "content": {
+            "type": "text",
+            "text": "Absolutely! Rate limiting is crucial for preventing brute force attacks. I'll implement a rate limiter using a token bucket algorithm."
+          }
         }
       ],
-      "is_complete": true
+      "_meta": {
+        "agentName": "Claude",
+        "isComplete": true
+      }
     }
   },
   {
@@ -208,15 +220,19 @@
     "type": "AgentMessage",
     "id": "msg-12",
     "data": {
-      "session_id": "sess_001",
-      "agent_name": "Claude",
+      "sessionId": "sess_001",
       "chunks": [
         {
-          "content_type": "Text",
-          "text": "The tests are running. While we wait, let me explain the security improvements:\n\n1. Password Hashing: We're using Argon2id with recommended parameters"
+          "content": {
+            "type": "text",
+            "text": "The tests are running. While we wait, let me explain the security improvements:\n\n1. Password Hashing: We're using Argon2id with recommended parameters"
+          }
         }
       ],
-      "is_complete": false
+      "_meta": {
+        "agentName": "Claude",
+        "isComplete": false
+      }
     }
   },
   {
