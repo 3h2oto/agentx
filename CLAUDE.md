@@ -210,6 +210,88 @@ The conversation UI uses a builder pattern with type-safe components:
 
 All components are exported from `src/components/mod.rs` for easy reuse.
 
+### Event Bus Architecture (SessionUpdateBus)
+
+The application uses a centralized event bus for real-time message distribution between components:
+
+#### Core Components
+
+1. **SessionUpdateBus** (`src/session_bus.rs`)
+   - Thread-safe publish-subscribe pattern
+   - `SessionUpdateEvent`: Contains `session_id` and `SessionUpdate` data
+   - `subscribe()`: Register callbacks for events
+   - `publish()`: Broadcast events to all subscribers
+   - Wrapped in `SessionUpdateBusContainer` (Arc<Mutex<>>) for cross-thread safety
+
+2. **GuiClient** (`src/gui_client.rs`)
+   - Implements `acp::Client` trait
+   - Receives agent notifications via `session_notification()` (line 132-164)
+   - **Publishes** to session bus when agent sends updates
+   - Used by `AgentManager` to bridge agent I/O threads to GPUI main thread
+
+3. **ConversationPanelAcp** (`src/conversation_acp.rs`)
+   - **Subscribes** to session bus on initialization
+   - Uses `tokio::sync::mpsc::unbounded_channel` for cross-thread communication
+   - Real-time rendering: subscription callback → channel → `cx.spawn()` → `cx.update()` → `cx.notify()`
+   - Zero-delay updates (no polling required)
+
+4. **ChatInputPanel** (`src/chat_input.rs`)
+   - Publishes user messages to session bus immediately (line 309-330)
+   - Provides instant visual feedback before agent response
+   - Uses unique `chunk_id` with UUID to identify local messages
+
+#### Message Flow
+
+```
+User Input → ChatInputPanel
+  ├─→ Immediate publish to session_bus (user message)
+  │    └─→ ConversationPanelAcp displays instantly
+  └─→ agent_handle.prompt()
+       └─→ Agent processes
+            └─→ GuiClient.session_notification()
+                 └─→ session_bus.publish()
+                      └─→ ConversationPanelAcp subscription
+                           └─→ channel.send()
+                                └─→ cx.spawn() background task
+                                     └─→ cx.update() + cx.notify()
+                                          └─→ Real-time render
+```
+
+#### Key Implementation Details
+
+- **Cross-thread safety**: Agent I/O threads → GPUI main thread via channels
+- **No polling**: Events trigger immediate renders through `cx.notify()`
+- **Session isolation**: Each session has a unique ID for message routing
+- **Scalability**: Unbounded channel prevents blocking on UI updates
+
+#### Usage Example
+
+```rust
+// Subscribe to session bus (in ConversationPanelAcp)
+let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+session_bus.subscribe(move |event| {
+    let _ = tx.send((*event.update).clone());
+});
+
+cx.spawn(|mut cx| async move {
+    while let Some(update) = rx.recv().await {
+        cx.update(|cx| {
+            entity.update(cx, |this, cx| {
+                // Process update and trigger render
+                cx.notify();
+            });
+        });
+    }
+}).detach();
+
+// Publish to session bus (in ChatInputPanel or GuiClient)
+let event = SessionUpdateEvent {
+    session_id: session_id.clone(),
+    update: Arc::new(SessionUpdate::UserMessageChunk(...)),
+};
+session_bus.publish(event);
+```
+
 ## Testing
 
 Run the complete story gallery from workspace root:
@@ -242,16 +324,21 @@ This Agent Studio is part of a Cargo workspace at `../../`:
 
 ### Important Files in agentx
 
-- `src/main.rs`: Application entry, DockWorkspace, layout persistence
-- `src/lib.rs`: Panel system, DockPanel trait, initialization, window utilities
+- `src/main.rs`: Application entry, DockWorkspace, layout persistence, passes session_bus to AgentManager
+- `src/lib.rs`: Panel system, DockPanel trait, initialization, window utilities, AppState with session_bus
 - `src/components/`: Reusable conversation UI components
 - `src/editor.rs`: Code editor with LSP integration
 - `src/task_list.rs`: Task list panel with collapsible sections
-- `src/conversation.rs`: Conversation panel with mock data
-- `src/chat_input.rs`: Chat input panel
+- `src/conversation.rs`: Conversation panel with mock data (for demonstration)
+- `src/conversation_acp.rs`: **ACP-enabled conversation panel** with real-time event bus integration
+- `src/chat_input.rs`: Chat input panel, publishes user messages to session bus
+- `src/session_bus.rs`: Event bus implementation for cross-thread message distribution
+- `src/gui_client.rs`: GUI client that publishes agent updates to session bus
+- `src/acp_client.rs`: Agent manager and handle, spawns agents with GuiClient
 - `src/title_bar.rs`: Custom application title bar
 - `src/themes.rs`: Theme configuration and management
 - `src/menu.rs`: Application menu setup
+- `src/workspace.rs`: Workspace layout, uses ConversationPanelAcp by default
 - `mock_tasks.json`: Mock task data for the task list panel 
 
 ## Dependencies
@@ -279,6 +366,47 @@ Key dependencies defined in `Cargo.toml`:
 ### Workspace Dependencies
 
 All workspace-level dependencies are defined in the root `Cargo.toml` and shared across examples.
+
+### AgentX-specific Dependencies
+
+- `uuid = { version = "1.11", features = ["v4"] }`: For generating unique message chunk IDs
+- `tokio = { version = "1.48.0", features = ["rt", "rt-multi-thread", "process"] }`: Async runtime for agent processes
+- `tokio-util = { version = "0.7.17", features = ["compat"] }`: Tokio utilities for stream compatibility
+- `agent-client-protocol = "0.7.0"`: ACP protocol types for agent communication
+- `agent-client-protocol-schema = "0.7.0"`: Schema definitions for session updates
+
+## Event Bus Best Practices
+
+### When to Use the Session Bus
+
+1. **Real-time UI updates** - Agent responses, tool calls, status changes
+2. **Cross-component communication** - Chat input → Conversation panel
+3. **Session-scoped events** - Messages tied to specific agent sessions
+
+### When NOT to Use the Session Bus
+
+1. **Global UI state** - Use AppState or GPUI global state instead
+2. **Synchronous operations** - Direct function calls are simpler
+3. **Local component state** - Use Entity state management
+
+### Threading Model
+
+- **Agent I/O threads**: Run agent processes, GuiClient callbacks
+- **GPUI main thread**: All UI rendering and entity updates
+- **Bridge**: `tokio::sync::mpsc::unbounded_channel` + `cx.spawn()`
+
+### Debugging Tips
+
+Enable debug logging to trace message flow:
+```bash
+RUST_LOG=info,agentx::gui_client=debug,agentx::conversation_acp=debug cargo run
+```
+
+Key log points:
+- `"Published user message to session bus"` - ChatInputPanel
+- `"Subscribed to session bus with channel-based updates"` - ConversationPanelAcp
+- `"Session update sent to channel"` - Subscription callback
+- `"Rendered session update"` - Entity update + render
 
 ## Coding Style and Conventions
 
