@@ -457,14 +457,26 @@ pub struct ConversationPanelAcp {
     rendered_items: Vec<RenderedItem>,
     /// Counter for generating unique IDs for new items
     next_index: usize,
+    /// Optional session ID to filter updates (None = all sessions)
+    session_id: Option<String>,
 }
 
 impl ConversationPanelAcp {
+    /// Create a new panel with mock data (for demo purposes)
     pub fn view(window: &mut Window, cx: &mut App) -> Entity<Self> {
         log::info!("🚀 Creating ConversationPanelAcp view");
         let entity = cx.new(|cx| Self::new(window, cx));
-        Self::subscribe_to_updates(&entity, cx);
+        Self::subscribe_to_updates(&entity, None, cx);
         log::info!("✅ ConversationPanelAcp view created and subscribed");
+        entity
+    }
+
+    /// Create a new panel for a specific session (no mock data)
+    pub fn view_for_session(session_id: String, window: &mut Window, cx: &mut App) -> Entity<Self> {
+        log::info!("🚀 Creating ConversationPanelAcp for session: {}", session_id);
+        let entity = cx.new(|cx| Self::new_for_session(session_id.clone(), window, cx));
+        Self::subscribe_to_updates(&entity, Some(session_id.clone()), cx);
+        log::info!("✅ ConversationPanelAcp created for session: {}", session_id);
         entity
     }
 
@@ -484,21 +496,44 @@ impl ConversationPanelAcp {
             focus_handle,
             rendered_items,
             next_index,
+            session_id: None,
         };
 
         panel
     }
 
+    fn new_for_session(session_id: String, _window: &mut Window, cx: &mut App) -> Self {
+        log::info!("🔧 Initializing ConversationPanelAcp for session: {}", session_id);
+        let focus_handle = cx.focus_handle();
+
+        Self {
+            focus_handle,
+            rendered_items: Vec::new(),
+            next_index: 0,
+            session_id: Some(session_id),
+        }
+    }
+
     /// Subscribe to session updates after the entity is created
-    pub fn subscribe_to_updates(entity: &Entity<Self>, cx: &mut App) {
+    pub fn subscribe_to_updates(entity: &Entity<Self>, session_filter: Option<String>, cx: &mut App) {
         let weak_entity = entity.downgrade();
         let session_bus = AppState::global(cx).session_bus.clone();
 
         // Create unbounded channel for cross-thread communication
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<SessionUpdate>();
 
+        // Clone session_filter for logging after the closure
+        let filter_log = session_filter.clone();
+
         // Subscribe to session bus, send updates to channel in callback
         session_bus.subscribe(move |event| {
+            // Filter by session_id if specified
+            if let Some(ref filter_id) = session_filter {
+                if &event.session_id != filter_id {
+                    return; // Skip this update
+                }
+            }
+
             // This callback runs in agent I/O thread
             let _ = tx.send((*event.update).clone());
             log::info!(
@@ -529,7 +564,8 @@ impl ConversationPanelAcp {
         })
         .detach();
 
-        log::info!("Subscribed to session bus with channel-based updates");
+        let filter_log_str = filter_log.as_deref().unwrap_or("all sessions");
+        log::info!("Subscribed to session bus for: {}", filter_log_str);
     }
 
     /// Helper to add an update to the rendered items list

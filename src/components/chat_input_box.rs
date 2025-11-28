@@ -193,6 +193,11 @@ impl RenderOnce for ChatInputBox {
                                             .ghost()
                                             .small(),
                                     )
+                                    .when_some(self.agent_select.clone(), |this, agent_select| {
+                                        this.child(
+                                            Select::new(&agent_select).small().appearance(false),
+                                        )
+                                    })
                                     .when_some(self.mode_select, |this, mode_select| {
                                         this.child(
                                             Select::new(&mode_select).small().appearance(false),
@@ -239,26 +244,7 @@ impl RenderOnce for ChatInputBox {
 
                                 btn
                             }),
-                    )
-                    // Agent selector row at the bottom
-                    .when_some(self.agent_select, |this, agent_select| {
-                        this.child(
-                            h_flex()
-                                .w_full()
-                                .items_center()
-                                .gap_2()
-                                .pt_2()
-                                .border_t_1()
-                                .border_color(theme.border)
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(theme.muted_foreground)
-                                        .child("Agent:"),
-                                )
-                                .child(Select::new(&agent_select).small().appearance(false)),
-                        )
-                    }),
+                    ),
             )
     }
 }

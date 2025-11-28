@@ -24,6 +24,27 @@ pub struct AddPanel(DockPlacement);
 #[action(namespace = story, no_json)]
 pub struct TogglePanelVisible(SharedString);
 
+fn default_dock_placement() -> DockPlacement {
+    DockPlacement::Center
+}
+
+#[derive(Action, Clone, PartialEq, Eq, Deserialize)]
+#[action(namespace = story, no_json)]
+pub struct AddSessionPanel {
+    pub session_id: String,
+    #[serde(skip, default = "default_dock_placement")]
+    pub placement: DockPlacement,
+}
+
+impl Default for AddSessionPanel {
+    fn default() -> Self {
+        Self {
+            session_id: String::new(),
+            placement: DockPlacement::Center,
+        }
+    }
+}
+
 actions!(story, [ToggleDockToggleButton]);
 
 const MAIN_DOCK_AREA: DockAreaTab = DockAreaTab {
@@ -402,6 +423,26 @@ impl DockWorkspace {
         });
     }
 
+    fn on_action_add_session_panel(
+        &mut self,
+        action: &AddSessionPanel,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        log::info!("Creating session panel for: {}", action.session_id);
+
+        // Create a new ConversationPanelAcp panel container for this specific session
+        let panel = Arc::new(DockPanelContainer::panel_for_session(
+            action.session_id.clone(),
+            window,
+            cx,
+        ));
+
+        self.dock_area.update(cx, |dock_area, cx| {
+            dock_area.add_panel(panel, action.placement, None, window, cx);
+        });
+    }
+
     fn on_action_toggle_panel_visible(
         &mut self,
         action: &TogglePanelVisible,
@@ -503,6 +544,7 @@ impl Render for DockWorkspace {
         div()
             .id("story-workspace")
             .on_action(cx.listener(Self::on_action_add_panel))
+            .on_action(cx.listener(Self::on_action_add_session_panel))
             .on_action(cx.listener(Self::on_action_toggle_panel_visible))
             .on_action(cx.listener(Self::on_action_toggle_dock_toggle_button))
             .on_action(cx.listener(Self::on_action_show_welcome_panel))
