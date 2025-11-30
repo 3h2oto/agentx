@@ -1,6 +1,6 @@
 use gpui::{
     div, prelude::*, px, App, Context, ElementId, Entity, FocusHandle, Focusable, IntoElement,
-    ParentElement, Render, SharedString, Styled, Window,
+    ParentElement, Render, ScrollHandle, SharedString, StatefulInteractiveElement, Styled, Window,
 };
 use gpui_component::{
     button::{Button, ButtonVariants},
@@ -483,6 +483,8 @@ pub struct ConversationPanelAcp {
     next_index: usize,
     /// Optional session ID to filter updates (None = all sessions)
     session_id: Option<String>,
+    /// Scroll handle for auto-scrolling to bottom
+    scroll_handle: ScrollHandle,
 }
 
 impl ConversationPanelAcp {
@@ -515,6 +517,7 @@ impl ConversationPanelAcp {
     fn new(_window: &mut Window, cx: &mut App) -> Self {
         log::info!("🔧 Initializing ConversationPanelAcp (new)");
         let focus_handle = cx.focus_handle();
+        let scroll_handle = ScrollHandle::new();
         let session_updates = Self::load_mock_data();
 
         let mut rendered_items = Vec::new();
@@ -529,6 +532,7 @@ impl ConversationPanelAcp {
             rendered_items,
             next_index,
             session_id: None,
+            scroll_handle,
         };
 
         panel
@@ -540,12 +544,14 @@ impl ConversationPanelAcp {
             session_id
         );
         let focus_handle = cx.focus_handle();
+        let scroll_handle = ScrollHandle::new();
 
         Self {
             focus_handle,
             rendered_items: Vec::new(),
             next_index: 0,
             session_id: Some(session_id),
+            scroll_handle,
         }
     }
 
@@ -597,7 +603,17 @@ impl ConversationPanelAcp {
                             this.next_index += 1;
                             log::info!("Processing update type: {:?}", update);
                             Self::add_update_to_list(&mut this.rendered_items, update, index, cx);
+
                             cx.notify(); // Trigger re-render immediately
+
+                            // Scroll to bottom after render completes
+                            // Use a very large offset to ensure we reach the bottom
+                            let scroll_handle = this.scroll_handle.clone();
+                            cx.defer(move |_| {
+                                // Set to a very large Y offset to ensure scrolling to bottom
+                                scroll_handle.set_offset(gpui::point(gpui::px(0.), gpui::px(999999.)));
+                            });
+
                             log::info!(
                                 "Rendered session update, total items: {}",
                                 this.rendered_items.len()
@@ -685,7 +701,17 @@ impl ConversationPanelAcp {
                             });
                             this.rendered_items
                                 .push(RenderedItem::PermissionRequest(permission_view));
+
                             cx.notify(); // Trigger re-render immediately
+
+                            // Scroll to bottom after render completes
+                            // Use a very large offset to ensure we reach the bottom
+                            let scroll_handle = this.scroll_handle.clone();
+                            cx.defer(move |_| {
+                                // Set to a very large Y offset to ensure scrolling to bottom
+                                scroll_handle.set_offset(gpui::point(gpui::px(0.), gpui::px(999999.)));
+                            });
+
                             log::info!(
                                 "Rendered permission request, total items: {}",
                                 this.rendered_items.len()
@@ -1032,6 +1058,12 @@ impl Render for ConversationPanelAcp {
             }
         }
 
-        children.scrollable(ScrollbarAxis::Vertical).size_full()
+        // Use div with overflow_scroll and track_scroll to enable auto-scrolling
+        div()
+            .id("conversation-scroll-container")
+            .size_full()
+            .overflow_scroll()
+            .track_scroll(&self.scroll_handle)
+            .child(children)
     }
 }
