@@ -17,10 +17,8 @@ use agent_client_protocol_schema::{
 };
 
 use crate::{
-    acp_client::AgentHandle,
-    dock_panel::DockPanel,
-    AgentMessage, AgentMessageData, AgentTodoList, AppState, ChatInputBox, PermissionRequestView,
-    UserMessageData,
+    acp_client::AgentHandle, dock_panel::DockPanel, AgentMessage, AgentMessageData, AgentTodoList,
+    AppState, ChatInputBox, PermissionRequestView, UserMessageData,
 };
 
 // ============================================================================
@@ -261,7 +259,11 @@ impl ToolCallItemState {
     }
 
     /// Update this tool call with fields from a ToolCallUpdate
-    fn apply_update(&mut self, update_fields: agent_client_protocol_schema::ToolCallUpdateFields, cx: &mut Context<Self>) {
+    fn apply_update(
+        &mut self,
+        update_fields: agent_client_protocol_schema::ToolCallUpdateFields,
+        cx: &mut Context<Self>,
+    ) {
         // Use the built-in update method from ToolCall
         self.tool_call.update(update_fields);
 
@@ -650,9 +652,15 @@ impl ConversationPanelAcp {
 
         // Spawn background task to receive from channel and update entity
         cx.spawn(async move |cx| {
-            log::info!("Starting background task for session: {}", filter_log_inner.as_deref().unwrap_or("all"));
+            log::info!(
+                "Starting background task for session: {}",
+                filter_log_inner.as_deref().unwrap_or("all")
+            );
             while let Some(update) = rx.recv().await {
-                log::info!("Background task received update for session: {}", filter_log_inner.as_deref().unwrap_or("all"));
+                log::info!(
+                    "Background task received update for session: {}",
+                    filter_log_inner.as_deref().unwrap_or("all")
+                );
                 let weak = weak_entity.clone();
                 let _ = cx.update(|cx| {
                     if let Some(entity) = weak.upgrade() {
@@ -669,7 +677,8 @@ impl ConversationPanelAcp {
                             let scroll_handle = this.scroll_handle.clone();
                             cx.defer(move |_| {
                                 // Set to a very large Y offset to ensure scrolling to bottom
-                                scroll_handle.set_offset(gpui::point(gpui::px(0.), gpui::px(999999.)));
+                                scroll_handle
+                                    .set_offset(gpui::point(gpui::px(0.), gpui::px(999999.)));
                             });
 
                             log::info!(
@@ -682,7 +691,10 @@ impl ConversationPanelAcp {
                     }
                 });
             }
-            log::info!("Background task ended for session: {}", filter_log_inner.as_deref().unwrap_or("all"));
+            log::info!(
+                "Background task ended for session: {}",
+                filter_log_inner.as_deref().unwrap_or("all")
+            );
         })
         .detach();
 
@@ -701,8 +713,7 @@ impl ConversationPanelAcp {
 
         // Create unbounded channel for cross-thread communication
         let (tx, mut rx) =
-            tokio::sync::mpsc::unbounded_channel::<crate::permission_bus::PermissionRequestEvent>(
-            );
+            tokio::sync::mpsc::unbounded_channel::<crate::permission_bus::PermissionRequestEvent>();
 
         // Clone session_filter for logging after the closure
         let filter_log = session_filter.clone();
@@ -767,7 +778,8 @@ impl ConversationPanelAcp {
                             let scroll_handle = this.scroll_handle.clone();
                             cx.defer(move |_| {
                                 // Set to a very large Y offset to ensure scrolling to bottom
-                                scroll_handle.set_offset(gpui::point(gpui::px(0.), gpui::px(999999.)));
+                                scroll_handle
+                                    .set_offset(gpui::point(gpui::px(0.), gpui::px(999999.)));
                             });
 
                             log::info!(
@@ -883,7 +895,8 @@ impl ConversationPanelAcp {
                 for item in items.iter_mut() {
                     if let RenderedItem::ToolCall(entity) = item {
                         let entity_clone = entity.clone();
-                        let matches = entity_clone.read(cx).tool_call_id() == &tool_call_update.tool_call_id;
+                        let matches =
+                            entity_clone.read(cx).tool_call_id() == &tool_call_update.tool_call_id;
 
                         if matches {
                             // Update the existing tool call
@@ -916,10 +929,7 @@ impl ConversationPanelAcp {
                             items.push(RenderedItem::ToolCall(entity));
                         }
                         Err(e) => {
-                            log::error!(
-                                "     ✗ Failed to create ToolCall from update: {:?}",
-                                e
-                            );
+                            log::error!("     ✗ Failed to create ToolCall from update: {:?}", e);
                         }
                     }
                 }
@@ -977,9 +987,12 @@ impl ConversationPanelAcp {
         let json_str = include_str!("../mock_conversation_acp.json");
         match serde_json::from_str::<Vec<SessionUpdate>>(json_str) {
             Ok(updates) => {
-                log::info!("✅ Successfully loaded {} mock conversation updates", updates.len());
+                log::info!(
+                    "✅ Successfully loaded {} mock conversation updates",
+                    updates.len()
+                );
                 updates
-            },
+            }
             Err(e) => {
                 log::error!("❌ Failed to load mock conversation data: {}", e);
                 Vec::new()
@@ -1103,13 +1116,11 @@ impl ConversationPanelAcp {
             // Get agent handle and send prompt
             let agent_handle: Option<Arc<AgentHandle>> = cx
                 .update(|cx| {
-                    AppState::global(cx)
-                        .agent_manager()
-                        .and_then(|m| {
-                            // Get the first available agent
-                            let agents = m.list_agents();
-                            agents.first().and_then(|name| m.get(name))
-                        })
+                    AppState::global(cx).agent_manager().and_then(|m| {
+                        // Get the first available agent
+                        let agents = m.list_agents();
+                        agents.first().and_then(|name| m.get(name))
+                    })
                 })
                 .ok()
                 .flatten();
@@ -1258,29 +1269,39 @@ impl Render for ConversationPanelAcp {
         v_flex()
             .size_full()
             .child(
-                // Scrollable message area
+                // Scrollable message area - takes remaining space
                 div()
                     .id("conversation-scroll-container")
                     .flex_1()
                     .overflow_scroll()
                     .track_scroll(&self.scroll_handle)
+                    .pb_3() // Add padding at bottom so messages don't get hidden behind input box
                     .child(children),
             )
             .child(
-                // Chat input box at bottom (not scrollable)
-                ChatInputBox::new("chat-input", self.input_state.clone())
-                    .on_send(cx.listener(|this, _ev, window, cx| {
-                        let text = this.input_state.read(cx).value().to_string();
-                        if !text.trim().is_empty() {
-                            // Clear the input
-                            this.input_state.update(cx, |state, cx| {
-                                state.set_value(SharedString::from(""), window, cx);
-                            });
+                // Chat input box at bottom (fixed, not scrollable)
+                div()
+                    .flex_none() // Don't allow shrinking
+                    .w_full()
+                    .bg(cx.theme().background) // Solid background
+                    .border_t_1()
+                    .border_color(cx.theme().border)
+                    .child(
+                        ChatInputBox::new("chat-input", self.input_state.clone()).on_send(
+                            cx.listener(|this, _ev, window, cx| {
+                                let text = this.input_state.read(cx).value().to_string();
+                                if !text.trim().is_empty() {
+                                    // Clear the input
+                                    this.input_state.update(cx, |state, cx| {
+                                        state.set_value(SharedString::from(""), window, cx);
+                                    });
 
-                            // Send the message
-                            this.send_message(text, cx);
-                        }
-                    })),
+                                    // Send the message
+                                    this.send_message(text, cx);
+                                }
+                            }),
+                        ),
+                    ),
             )
     }
 }
