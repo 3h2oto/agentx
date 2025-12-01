@@ -5,6 +5,7 @@ use gpui::{App, AppContext, Entity, Global, SharedString};
 use crate::{
     core::agent::{AgentManager, PermissionStore},
     core::event_bus::{PermissionBusContainer, SessionUpdateBusContainer},
+    core::services::{AgentService, MessageService},
 };
 
 /// Welcome session info - stores the session created when user selects an agent
@@ -22,6 +23,9 @@ pub struct AppState {
     pub permission_bus: PermissionBusContainer,
     /// Current welcome session - created when user selects an agent
     welcome_session: Option<WelcomeSession>,
+    /// Service layer
+    agent_service: Option<Arc<AgentService>>,
+    message_service: Option<Arc<MessageService>>,
 }
 
 impl AppState {
@@ -33,6 +37,8 @@ impl AppState {
             session_bus: SessionUpdateBusContainer::new(),
             permission_bus: PermissionBusContainer::new(),
             welcome_session: None,
+            agent_service: None,
+            message_service: None,
         };
         cx.set_global::<AppState>(state);
     }
@@ -51,7 +57,19 @@ impl AppState {
             "Setting AgentManager with {} agents",
             manager.list_agents().len()
         );
+
+        // Initialize services when agent_manager is set
+        let agent_service = Arc::new(AgentService::new(manager.clone()));
+        let message_service = Arc::new(MessageService::new(
+            self.session_bus.clone(),
+            agent_service.clone(),
+        ));
+
         self.agent_manager = Some(manager);
+        self.agent_service = Some(agent_service);
+        self.message_service = Some(message_service);
+
+        log::info!("Initialized service layer (AgentService, MessageService)");
     }
 
     /// Set the PermissionStore
@@ -89,6 +107,16 @@ impl AppState {
     pub fn clear_welcome_session(&mut self) {
         log::info!("Clearing welcome session");
         self.welcome_session = None;
+    }
+
+    /// Get the AgentService
+    pub fn agent_service(&self) -> Option<&Arc<AgentService>> {
+        self.agent_service.as_ref()
+    }
+
+    /// Get the MessageService
+    pub fn message_service(&self) -> Option<&Arc<MessageService>> {
+        self.message_service.as_ref()
     }
 }
 impl Global for AppState {}

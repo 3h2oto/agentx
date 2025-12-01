@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use gpui::{
     px, App, AppContext, Context, Entity, FocusHandle, Focusable, IntoElement, ParentElement,
     Pixels, Render, Styled, Subscription, Window,
@@ -100,8 +98,6 @@ pub struct ChatInputPanel {
     mode_select: Entity<SelectState<Vec<&'static str>>>,
     agent_select: Entity<SelectState<Vec<String>>>,
     has_agents: bool,
-    /// Map of agent name -> session ID
-    sessions: HashMap<String, String>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -194,7 +190,6 @@ impl ChatInputPanel {
             mode_select,
             agent_select,
             has_agents,
-            sessions: HashMap::new(),
             _subscriptions: Vec::new(),
         }
     }
@@ -223,7 +218,7 @@ impl ChatInputPanel {
         cx.notify();
     }
 
-    /// Send message to the selected agent
+    /// Send message to the selected agent using MessageService
     fn send_message(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // Get the selected agent name
         let agent_name = self.agent_select.read(cx).selected_value().cloned();
@@ -231,7 +226,7 @@ impl ChatInputPanel {
         let agent_name = match agent_name {
             Some(name) if name != "No agents" => name,
             _ => {
-                eprintln!("No agent selected");
+                log::warn!("[ChatInputPanel] No agent selected");
                 return;
             }
         };
@@ -244,101 +239,32 @@ impl ChatInputPanel {
         }
         log::info!("[ChatInputPanel] Sending message: \"{}\"", input_text);
 
-        // Get the agent handle
-        let agent_handle = AppState::global(cx)
-            .agent_manager()
-            .and_then(|m| m.get(&agent_name));
-
-        let agent_handle = match agent_handle {
-            Some(handle) => handle,
+        // Get MessageService
+        let message_service = match AppState::global(cx).message_service() {
+            Some(service) => service.clone(),
             None => {
-                eprintln!("Agent not found: {}", agent_name);
+                log::error!("[ChatInputPanel] MessageService not initialized");
                 return;
             }
         };
-
-        // Check if we have an existing session for this agent
-        let existing_session = self.sessions.get(&agent_name).cloned();
 
         // Clear the input immediately
         self.input_state.update(cx, |state, cx| {
             state.set_value("", window, cx);
         });
 
-        // Spawn async task to send the message
-        let sessions_update = cx.entity().downgrade();
-        cx.spawn(async move |_this, cx| {
-            use agent_client_protocol as acp;
-
-            // Create a new session if needed
-            let session_id = if let Some(sid) = existing_session {
-                sid
-            } else {
-                let request = acp::NewSessionRequest {
-                    cwd: std::env::current_dir().unwrap_or_default(),
-                    mcp_servers: vec![],
-                    meta: None,
-                };
-
-                match agent_handle.new_session(request).await {
-                    Ok(resp) => {
-                        let sid = resp.session_id.to_string();
-                        println!("[{}] Created new session: {}", agent_name, sid);
-
-                        // Store the session ID
-                        let agent_name_clone = agent_name.clone();
-                        let sid_clone = sid.clone();
-                        cx.update(|cx| {
-                            if let Some(entity) = sessions_update.upgrade() {
-                                entity.update(cx, |this, _| {
-                                    this.sessions.insert(agent_name_clone, sid_clone);
-                                });
-                            }
-                        })
-                        .ok();
-
-                        sid
-                    }
-                    Err(e) => {
-                        eprintln!("[{}] Failed to create session: {}", agent_name, e);
-                        return;
-                    }
-                }
-            };
-
-            // Immediately publish user message to session bus for instant UI feedback
-            use agent_client_protocol_schema as schema;
-            use std::sync::Arc;
-
-            // Create user message chunk using the correct ContentChunk API
-            let content_block = schema::ContentBlock::from(input_text.clone());
-            let content_chunk = schema::ContentChunk::new(content_block);
-
-            let user_event = crate::core::event_bus::session_bus::SessionUpdateEvent {
-                session_id: session_id.clone(),
-                update: Arc::new(schema::SessionUpdate::UserMessageChunk(content_chunk)),
-            };
-
-            // Publish to session bus
-            cx.update(|cx| {
-                AppState::global(cx).session_bus.publish(user_event);
-            })
-            .ok();
-            log::info!("Published user message to session bus: {}", session_id);
-
-            // Send the prompt
-            let request = acp::PromptRequest {
-                session_id: acp::SessionId::from(session_id),
-                prompt: vec![input_text.into()],
-                meta: None,
-            };
-
-            match agent_handle.prompt(request).await {
-                Ok(_) => {
-                    println!("[{}] Prompt sent successfully", agent_name);
+        // Spawn async task to send the message using MessageService
+        cx.spawn(async move |_this, _cx| {
+            // MessageService handles:
+            // 1. Get or create session
+            // 2. Publish user message to event bus (immediate UI feedback)
+            // 3. Send prompt to agent
+            match message_service.send_user_message(&agent_name, input_text).await {
+                Ok(session_id) => {
+                    log::info!("[ChatInputPanel] Message sent successfully to session {}", session_id);
                 }
                 Err(e) => {
-                    eprintln!("[{}] Failed to send prompt: {}", agent_name, e);
+                    log::error!("[ChatInputPanel] Failed to send message: {}", e);
                 }
             }
         })
