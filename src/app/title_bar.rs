@@ -88,8 +88,8 @@ impl Render for AppTitleBar {
                                     .icon(IconName::Settings)
                                     .small()
                                     .ghost()
-                                    .on_click(|_, _, cx| {
-                                        cx.dispatch_action(&OpenSettings);
+                                    .on_click(|_, window, cx| {
+                                        window.dispatch_action(Box::new(OpenSettings), cx);
                                     }),
                             )
                             // .child(

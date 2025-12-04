@@ -4,11 +4,49 @@ use gpui_component::{
     h_flex, v_flex, ActiveTheme as _, IconName, Root, Sizable as _, StyledExt as _, TitleBar,
 };
 
+use crate::panels::DockPanel;
+
 actions!(settings, [CloseSettingsWindow]);
 
 pub struct SettingsWindow {
     selected_tab: SettingsTab,
 }
+
+impl DockPanel for SettingsWindow {
+    fn title() -> &'static str {
+        "Settings"
+    }
+
+    fn description() -> &'static str {
+        "Settings panel"
+    }
+
+    fn closable() -> bool {
+        true
+    }
+
+    fn zoomable() -> Option<gpui_component::dock::PanelControl> {
+        Some(gpui_component::dock::PanelControl::default())
+    }
+
+    fn new_view(window: &mut Window, cx: &mut App) -> Entity<impl Render> {
+        cx.new(|cx| Self::new(window, cx))
+    }
+
+    fn on_active_any(view: gpui::AnyView, active: bool, window: &mut Window, cx: &mut App) {
+        let _ = (view, active, window, cx);
+    }
+
+    fn paddings() -> gpui::Pixels {
+        px(0.)
+    }
+}
+
+// impl Focusable for SettingsWindow {
+//     fn focus_handle(&self, _cx: &App) -> FocusHandle {
+//         self.focus_handle.clone()
+//     }
+// }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SettingsTab {
@@ -19,6 +57,10 @@ enum SettingsTab {
 }
 
 impl SettingsWindow {
+    pub fn view(window: &mut Window, cx: &mut App) -> Entity<Self> {
+        let entity = cx.new(|cx| Self::new(window, cx));
+        entity
+    }
     pub fn new(_window: &mut Window, _cx: &mut Context<Self>) -> Self {
         Self {
             selected_tab: SettingsTab::General,

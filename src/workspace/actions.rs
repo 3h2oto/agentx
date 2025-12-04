@@ -4,9 +4,10 @@ use std::sync::Arc;
 
 use crate::{
     panels::{dock_panel::DockPanelContainer, DockPanel},
+    title_bar::OpenSettings,
     utils, AddPanel, AppState, ConversationPanelAcp, CreateTaskFromWelcome,
-    NewSessionConversationPanel, ShowConversationPanel, ShowWelcomePanel, ToggleDockToggleButton,
-    TogglePanelVisible, WelcomePanel,
+    NewSessionConversationPanel, SettingsWindow, ShowConversationPanel, ShowWelcomePanel,
+    ToggleDockToggleButton, TogglePanelVisible, WelcomePanel,
 };
 
 use super::DockWorkspace;
@@ -136,7 +137,19 @@ impl DockWorkspace {
         })
         .detach();
     }
+    pub(super) fn on_action_open_setting_panel(
+        &mut self,
+        _action: &OpenSettings,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        log::info!("Adding new Settings panel");
+        let panel = Arc::new(DockPanelContainer::panel::<SettingsWindow>(window, cx));
 
+        self.dock_area.update(cx, |dock_area, cx| {
+            dock_area.add_panel(panel, DockPlacement::Center, None, window, cx);
+        });
+    }
     /// Handle ShowWelcomePanel action - display welcome panel and collapse docks
     pub(super) fn on_action_show_welcome_panel(
         &mut self,

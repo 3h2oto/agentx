@@ -277,6 +277,7 @@ fn create_panel_view(
         "ConversationPanelAcp" => story!(ConversationPanelAcp),
         "SessionManagerPanel" => story!(SessionManagerPanel),
         "WelcomePanel" => story!(WelcomePanel),
+        "SettingsWindow" => story!(SettingsWindow),
         _ => {
             unreachable!("Invalid story klass: {}", story_klass)
         }
