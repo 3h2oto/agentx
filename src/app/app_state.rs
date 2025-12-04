@@ -1,4 +1,5 @@
 use gpui::{App, AppContext, Entity, Global, SharedString};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::{
@@ -29,6 +30,8 @@ pub struct AppState {
     agent_service: Option<Arc<AgentService>>,
     message_service: Option<Arc<MessageService>>,
     workspace_service: Option<Arc<WorkspaceService>>,
+    /// Current working directory for the code editor
+    current_working_dir: PathBuf,
 }
 
 impl AppState {
@@ -61,6 +64,7 @@ impl AppState {
             agent_service: None,
             message_service: None,
             workspace_service: Some(workspace_service),
+            current_working_dir: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
         };
         cx.set_global::<AppState>(state);
     }
@@ -153,6 +157,17 @@ impl AppState {
     /// Get the WorkspaceService
     pub fn workspace_service(&self) -> Option<&Arc<WorkspaceService>> {
         self.workspace_service.as_ref()
+    }
+
+    /// Get the current working directory
+    pub fn current_working_dir(&self) -> &PathBuf {
+        &self.current_working_dir
+    }
+
+    /// Set the current working directory
+    pub fn set_current_working_dir(&mut self, path: PathBuf) {
+        log::info!("Setting current working directory: {:?}", path);
+        self.current_working_dir = path;
     }
 }
 impl Global for AppState {}

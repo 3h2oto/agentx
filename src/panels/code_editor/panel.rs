@@ -17,6 +17,7 @@ use lsp_types::{CodeActionKind, TextEdit, WorkspaceEdit};
 use super::lsp_providers::TextConvertor;
 use super::lsp_store::CodeEditorPanelLspStore;
 use super::types::build_file_items;
+use crate::AppState;
 
 pub struct CodeEditorPanel {
     editor: Entity<InputState>,
@@ -26,6 +27,7 @@ pub struct CodeEditorPanel {
     line_number: bool,
     indent_guides: bool,
     soft_wrap: bool,
+    show_file_tree: bool,
     lsp_store: CodeEditorPanelLspStore,
     _subscriptions: Vec<Subscription>,
     _lint_task: Task<()>,
@@ -83,7 +85,8 @@ impl CodeEditorPanel {
         let go_to_line_state = cx.new(|cx| InputState::new(window, cx));
 
         let tree_state = cx.new(|cx| TreeState::new(cx));
-        Self::load_files(tree_state.clone(), PathBuf::from("./"), cx);
+        let working_dir = AppState::global(cx).current_working_dir().clone();
+        Self::load_files(tree_state.clone(), working_dir, cx);
 
         let _subscriptions = vec![cx.subscribe(&editor, |this, _, _: &InputEvent, cx| {
             this.lint_document(cx);
@@ -97,6 +100,7 @@ impl CodeEditorPanel {
             line_number: true,
             indent_guides: true,
             soft_wrap: false,
+            show_file_tree: true,
             lsp_store,
             _subscriptions,
             _lint_task: Task::ready(()),
@@ -304,6 +308,25 @@ impl CodeEditorPanel {
         .h_full()
     }
 
+    fn render_toggle_file_tree_button(
+        &self,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        Button::new("toggle-file-tree")
+            .icon(if self.show_file_tree {
+                IconName::PanelLeftClose
+            } else {
+                IconName::PanelLeft
+            })
+            .ghost()
+            .xsmall()
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.show_file_tree = !this.show_file_tree;
+                cx.notify();
+            }))
+    }
+
     fn render_line_number_button(
         &self,
         _: &mut Window,
@@ -388,29 +411,32 @@ impl Render for CodeEditorPanel {
             });
         }
 
+        let editor_input = Input::new(&self.editor)
+            .bordered(false)
+            .p_0()
+            .h_full()
+            .font_family(cx.theme().mono_font_family.clone())
+            .text_size(cx.theme().mono_font_size)
+            .focus_bordered(false)
+            .into_any_element();
+
         v_flex().id("app").size_full().child(
             v_flex()
                 .id("source")
                 .w_full()
                 .flex_1()
-                .child(
+                .child(if self.show_file_tree {
                     h_resizable("editor-container")
                         .child(
                             resizable_panel()
                                 .size(px(240.))
                                 .child(self.render_file_tree(window, cx)),
                         )
-                        .child(
-                            Input::new(&self.editor)
-                                .bordered(false)
-                                .p_0()
-                                .h_full()
-                                .font_family(cx.theme().mono_font_family.clone())
-                                .text_size(cx.theme().mono_font_size)
-                                .focus_bordered(false)
-                                .into_any_element(),
-                        ),
-                )
+                        .child(editor_input)
+                        .into_any_element()
+                } else {
+                    h_flex().size_full().child(editor_input).into_any_element()
+                })
                 .child(
                     h_flex()
                         .justify_between()
@@ -424,6 +450,7 @@ impl Render for CodeEditorPanel {
                         .child(
                             h_flex()
                                 .gap_3()
+                                .child(self.render_toggle_file_tree_button(window, cx))
                                 .child(self.render_line_number_button(window, cx))
                                 .child(self.render_soft_wrap_button(window, cx))
                                 .child(self.render_indent_guides_button(window, cx)),
