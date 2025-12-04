@@ -6,7 +6,7 @@ use gpui_component::{
     h_flex,
     menu::PopupMenu,
     notification::Notification,
-    v_flex, ActiveTheme, IconName, WindowExt,
+    ActiveTheme, IconName, WindowExt,
 };
 use serde::{Deserialize, Serialize};
 
@@ -216,7 +216,11 @@ impl DockPanelContainer {
 
     /// Create a panel for a specific session (currently only supports ConversationPanelAcp)
     /// This will load the conversation history for that session
-    pub fn panel_for_session(session_id: String, window: &mut Window, cx: &mut App) -> Entity<Self> {
+    pub fn panel_for_session(
+        session_id: String,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> Entity<Self> {
         use crate::panels::conversation_acp::ConversationPanelAcp;
 
         let name = ConversationPanelAcp::title();
@@ -316,7 +320,11 @@ impl Panel for DockPanelContainer {
         "DockPanelContainer"
     }
 
-    fn title(&mut self, _window: &mut gpui::Window, _cx: &mut gpui::Context<'_, DockPanelContainer>) -> impl gpui::IntoElement {
+    fn title(
+        &mut self,
+        _window: &mut gpui::Window,
+        _cx: &mut gpui::Context<'_, DockPanelContainer>,
+    ) -> impl gpui::IntoElement {
         self.name.clone().into_any_element()
     }
 
@@ -346,11 +354,21 @@ impl Panel for DockPanelContainer {
             .contains(&self.name)
     }
 
-    fn set_zoomed(&mut self, zoomed: bool, _window: &mut Window, _cx: &mut gpui::Context<'_, DockPanelContainer>) {
+    fn set_zoomed(
+        &mut self,
+        zoomed: bool,
+        _window: &mut Window,
+        _cx: &mut gpui::Context<'_, DockPanelContainer>,
+    ) {
         println!("panel: {} zoomed: {}", self.name, zoomed);
     }
 
-    fn set_active(&mut self, active: bool, _window: &mut Window, cx: &mut gpui::Context<'_, DockPanelContainer>) {
+    fn set_active(
+        &mut self,
+        active: bool,
+        _window: &mut Window,
+        cx: &mut gpui::Context<'_, DockPanelContainer>,
+    ) {
         println!("panel: {} active: {}", self.name, active);
         if let Some(on_active) = self.on_active {
             if let Some(story) = self.story.clone() {
@@ -359,11 +377,20 @@ impl Panel for DockPanelContainer {
         }
     }
 
-    fn dropdown_menu(&mut self, menu: PopupMenu, _window: &mut gpui::Window, _cx: &mut gpui::Context<'_, DockPanelContainer>) -> PopupMenu {
+    fn dropdown_menu(
+        &mut self,
+        menu: PopupMenu,
+        _window: &mut gpui::Window,
+        _cx: &mut gpui::Context<'_, DockPanelContainer>,
+    ) -> PopupMenu {
         menu.menu("Info", Box::new(ShowPanelInfo))
     }
 
-    fn toolbar_buttons(&mut self, _window: &mut Window, _cx: &mut gpui::Context<'_, DockPanelContainer>) -> Option<Vec<Button>> {
+    fn toolbar_buttons(
+        &mut self,
+        _window: &mut Window,
+        _cx: &mut gpui::Context<'_, DockPanelContainer>,
+    ) -> Option<Vec<Button>> {
         Some(vec![
             Button::new("info")
                 .icon(IconName::Info)
@@ -396,22 +423,13 @@ impl Focusable for DockPanelContainer {
 }
 impl Render for DockPanelContainer {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        v_flex()
+        div()
             .id("story-container")
             .size_full()
-            .overflow_y_scroll()
+            .p(self.paddings)
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(Self::on_action_panel_info))
             .on_action(cx.listener(Self::on_action_toggle_search))
-            .when_some(self.story.clone(), |this, story| {
-                this.child(
-                    v_flex()
-                        .id("story-children")
-                        .w_full()
-                        .flex_1()
-                        .p(self.paddings)
-                        .child(story),
-                )
-            })
+            .when_some(self.story.clone(), |this, story| this.child(story))
     }
 }

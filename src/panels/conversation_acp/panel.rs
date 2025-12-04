@@ -7,6 +7,7 @@ use gpui_component::{
     collapsible::Collapsible,
     h_flex,
     input::InputState,
+    scroll::ScrollableElement,
     v_flex, ActiveTheme, Icon, IconName, Sizable,
 };
 
@@ -473,7 +474,7 @@ impl ConversationPanelAcp {
         let scroll_handle = ScrollHandle::new();
         let input_state = cx.new(|cx| {
             InputState::new(_window, cx)
-                .auto_grow(2, 8)
+                .auto_grow(1, 3)
                 .soft_wrap(true)
                 .placeholder("Type a message...")
         });
@@ -507,7 +508,7 @@ impl ConversationPanelAcp {
         let scroll_handle = ScrollHandle::new();
         let input_state = cx.new(|cx| {
             InputState::new(window, cx)
-                .auto_grow(2, 8)
+                .auto_grow(1, 3)
                 .soft_wrap(true)
                 .placeholder("Type a message...")
         });
@@ -523,11 +524,7 @@ impl ConversationPanelAcp {
     }
 
     /// Load historical messages for a session
-    pub fn load_history_for_session(
-        entity: &Entity<Self>,
-        session_id: String,
-        cx: &mut App,
-    ) {
+    pub fn load_history_for_session(entity: &Entity<Self>, session_id: String, cx: &mut App) {
         let weak_entity = entity.downgrade();
 
         // Get MessageService
@@ -545,7 +542,11 @@ impl ConversationPanelAcp {
         cx.spawn(async move |cx| {
             match message_service.load_history(&session_id).await {
                 Ok(messages) => {
-                    log::info!("Loaded {} historical messages for session: {}", messages.len(), session_id);
+                    log::info!(
+                        "Loaded {} historical messages for session: {}",
+                        messages.len(),
+                        session_id
+                    );
 
                     let weak = weak_entity.clone();
                     let _ = cx.update(|cx| {
@@ -553,7 +554,11 @@ impl ConversationPanelAcp {
                             entity.update(cx, |this, cx| {
                                 // Process each historical message
                                 for (index, persisted_msg) in messages.into_iter().enumerate() {
-                                    log::debug!("Loading historical message {}: timestamp={}", index, persisted_msg.timestamp);
+                                    log::debug!(
+                                        "Loading historical message {}: timestamp={}",
+                                        index,
+                                        persisted_msg.timestamp
+                                    );
                                     Self::add_update_to_list(
                                         &mut this.rendered_items,
                                         persisted_msg.update,
@@ -577,7 +582,8 @@ impl ConversationPanelAcp {
                                 // Scroll to bottom after loading history
                                 let scroll_handle = this.scroll_handle.clone();
                                 cx.defer(move |_| {
-                                    scroll_handle.set_offset(gpui::point(gpui::px(0.), gpui::px(999999.)));
+                                    scroll_handle
+                                        .set_offset(gpui::point(gpui::px(0.), gpui::px(999999.)));
                                 });
                             });
                         } else {
@@ -1246,8 +1252,9 @@ impl Render for ConversationPanelAcp {
                 div()
                     .id("conversation-scroll-container")
                     .flex_1()
-                    .overflow_scroll()
-                    .track_scroll(&self.scroll_handle)
+                    .overflow_y_scroll()
+                    .overflow_y_scrollbar()
+                    // .track_scroll(&self.scroll_handle)
                     .pb_3() // Add padding at bottom so messages don't get hidden behind input box
                     .child(children),
             )
@@ -1257,8 +1264,9 @@ impl Render for ConversationPanelAcp {
                     .flex_none() // Don't allow shrinking
                     .w_full()
                     .bg(cx.theme().background) // Solid background
-                    .border_t_1()
-                    .border_color(cx.theme().border)
+                    // .border_t_1()
+                    .p_1()
+                    // .border_color(cx.theme().border)
                     .child(
                         ChatInputBox::new("chat-input", self.input_state.clone()).on_send(
                             cx.listener(|this, _ev, window, cx| {

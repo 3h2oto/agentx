@@ -54,8 +54,7 @@ impl PersistenceService {
     /// Ensure the base directory exists
     fn ensure_base_dir_sync(&self) -> Result<()> {
         if !self.base_dir.exists() {
-            std::fs::create_dir_all(&self.base_dir)
-                .context("Failed to create base directory")?;
+            std::fs::create_dir_all(&self.base_dir).context("Failed to create base directory")?;
         }
         Ok(())
     }
@@ -72,13 +71,11 @@ impl PersistenceService {
         smol::unblock(move || {
             // Ensure directory exists
             if !base_dir.exists() {
-                std::fs::create_dir_all(&base_dir)
-                    .context("Failed to create base directory")?;
+                std::fs::create_dir_all(&base_dir).context("Failed to create base directory")?;
             }
 
             // Serialize to JSON and append newline
-            let json = serde_json::to_string(&message)
-                .context("Failed to serialize message")?;
+            let json = serde_json::to_string(&message).context("Failed to serialize message")?;
 
             // Open file in append mode
             use std::fs::OpenOptions;
@@ -91,8 +88,7 @@ impl PersistenceService {
                 .context("Failed to open session file")?;
 
             // Write JSON line
-            write!(file, "{}\n", json)
-                .context("Failed to write message")?;
+            write!(file, "{}\n", json).context("Failed to write message")?;
 
             log::debug!("Saved message to session file: {}", file_path.display());
             Ok(())
@@ -118,8 +114,7 @@ impl PersistenceService {
             use std::fs::File;
             use std::io::{BufRead, BufReader};
 
-            let file = File::open(&file_path)
-                .context("Failed to open session file")?;
+            let file = File::open(&file_path).context("Failed to open session file")?;
 
             let reader = BufReader::new(file);
             let mut messages = Vec::new();
@@ -139,7 +134,11 @@ impl PersistenceService {
                 }
             }
 
-            log::info!("Loaded {} messages from session file: {}", messages.len(), file_path.display());
+            log::info!(
+                "Loaded {} messages from session file: {}",
+                messages.len(),
+                file_path.display()
+            );
             Ok(messages)
         })
         .await
@@ -151,8 +150,7 @@ impl PersistenceService {
 
         smol::unblock(move || {
             if file_path.exists() {
-                std::fs::remove_file(&file_path)
-                    .context("Failed to delete session file")?;
+                std::fs::remove_file(&file_path).context("Failed to delete session file")?;
                 log::info!("Deleted session file: {}", file_path.display());
             }
             Ok(())
@@ -171,8 +169,8 @@ impl PersistenceService {
 
             let mut sessions = Vec::new();
 
-            for entry in std::fs::read_dir(&base_dir)
-                .context("Failed to read sessions directory")?
+            for entry in
+                std::fs::read_dir(&base_dir).context("Failed to read sessions directory")?
             {
                 let entry = entry?;
                 let path = entry.path();

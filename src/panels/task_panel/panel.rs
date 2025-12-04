@@ -8,14 +8,15 @@
 //! - Random data generation for demonstration
 
 use gpui::{
-    div, px, prelude::FluentBuilder, App, AppContext, Context, Entity, FocusHandle, Focusable,
+    div, prelude::FluentBuilder, px, App, AppContext, Context, Entity, FocusHandle, Focusable,
     InteractiveElement, IntoElement, ParentElement, Pixels, Render, SharedString,
     StatefulInteractiveElement, Styled, Subscription, Window,
 };
 use gpui_component::{
     button::{Button, ButtonGroup, ButtonVariants},
-    h_flex, v_flex, ActiveTheme, Icon, IconName, Selectable, Sizable, StyledExt,
+    h_flex,
     scroll::ScrollableElement as _,
+    v_flex, ActiveTheme, Icon, IconName, Selectable, Sizable, StyledExt,
 };
 use rand::Rng;
 use std::rc::Rc;
@@ -40,8 +41,8 @@ pub struct WorkspaceGroup {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ViewMode {
-    Tree,       // Group by workspace
-    Timeline,   // Group by date
+    Tree,     // Group by workspace
+    Timeline, // Group by date
 }
 
 // ============================================================================
@@ -164,8 +165,15 @@ impl TaskPanel {
                 WorkspaceUpdateEvent::WorkspaceRemoved { workspace_id } => {
                     log::debug!("TaskPanel received WorkspaceRemoved: {}", workspace_id);
                 }
-                WorkspaceUpdateEvent::TaskCreated { workspace_id, task_id } => {
-                    log::debug!("TaskPanel received TaskCreated: {} in {}", task_id, workspace_id);
+                WorkspaceUpdateEvent::TaskCreated {
+                    workspace_id,
+                    task_id,
+                } => {
+                    log::debug!(
+                        "TaskPanel received TaskCreated: {} in {}",
+                        task_id,
+                        workspace_id
+                    );
                 }
                 WorkspaceUpdateEvent::TaskUpdated { task_id } => {
                     log::debug!("TaskPanel received TaskUpdated: {}", task_id);
@@ -194,7 +202,7 @@ impl TaskPanel {
     fn generate_random_workspaces() -> Vec<WorkspaceGroup> {
         let mut rng = rand::thread_rng();
 
-        let workspace_names = vec![
+        let workspace_names = [
             "conductor",
             "melty_home",
             "swipe",
@@ -205,10 +213,10 @@ impl TaskPanel {
             "metarquiz-2",
         ];
 
-        let task_modes = vec!["Auto", "Ask", "Plan", "Code", "Explain"];
-        let agent_names = vec!["claude", "gpt-4", "gemini", "copilot"];
+        let task_modes = ["Auto", "Ask", "Plan", "Code", "Explain"];
+        let agent_names = ["claude", "gpt-4", "gemini", "copilot"];
 
-        let sample_messages = vec![
+        let sample_messages = [
             "Implement user authentication",
             "Fix layout issue on mobile",
             "Add dark mode support",
@@ -219,56 +227,67 @@ impl TaskPanel {
             "Add error handling",
         ];
 
-        workspace_names.iter().enumerate().map(|(idx, name)| {
-            let task_count = if idx < 2 { rng.gen_range(2..4) } else { 0 };
-            let tasks: Vec<_> = (0..task_count).map(|i| {
-                let workspace_id = format!("ws-{}", idx);
-                let task_name = sample_messages[rng.gen_range(0..sample_messages.len())].to_string();
-                let agent_name = agent_names[rng.gen_range(0..agent_names.len())].to_string();
-                let mode = task_modes[rng.gen_range(0..task_modes.len())].to_string();
+        workspace_names
+            .iter()
+            .enumerate()
+            .map(|(idx, name)| {
+                let task_count = if idx < 2 { rng.gen_range(2..4) } else { 0 };
+                let tasks: Vec<_> = (0..task_count)
+                    .map(|i| {
+                        let workspace_id = format!("ws-{}", idx);
+                        let task_name =
+                            sample_messages[rng.gen_range(0..sample_messages.len())].to_string();
+                        let agent_name =
+                            agent_names[rng.gen_range(0..agent_names.len())].to_string();
+                        let mode = task_modes[rng.gen_range(0..task_modes.len())].to_string();
 
-                let mut task = WorkspaceTask::new(workspace_id.clone(), task_name, agent_name, mode);
+                        let mut task =
+                            WorkspaceTask::new(workspace_id.clone(), task_name, agent_name, mode);
 
-                // Randomly assign status
-                let status_rand = rng.gen_range(0..4);
-                task.status = match status_rand {
-                    0 => TaskStatus::Pending,
-                    1 => TaskStatus::InProgress,
-                    2 => TaskStatus::Completed,
-                    _ => TaskStatus::Failed,
-                };
+                        // Randomly assign status
+                        let status_rand = rng.gen_range(0..4);
+                        task.status = match status_rand {
+                            0 => TaskStatus::Pending,
+                            1 => TaskStatus::InProgress,
+                            2 => TaskStatus::Completed,
+                            _ => TaskStatus::Failed,
+                        };
 
-                // Randomly add session ID for in-progress tasks
-                if task.status == TaskStatus::InProgress {
-                    task.session_id = Some(format!("session-{}-{}", idx, i));
+                        // Randomly add session ID for in-progress tasks
+                        if task.status == TaskStatus::InProgress {
+                            task.session_id = Some(format!("session-{}-{}", idx, i));
+                        }
+
+                        // Add last message for some tasks
+                        if rng.gen_bool(0.7) {
+                            let messages = [
+                                "Working on it...",
+                                "Almost done",
+                                "Need more information",
+                                "Completed successfully",
+                                "Encountered an error",
+                            ];
+                            task.last_message = Some(SharedString::from(
+                                messages[rng.gen_range(0..messages.len())],
+                            ));
+                        }
+
+                        // Randomize created_at to test timeline view
+                        let days_ago = rng.gen_range(0..30);
+                        task.created_at = chrono::Utc::now() - chrono::Duration::days(days_ago);
+
+                        Rc::new(task)
+                    })
+                    .collect();
+
+                WorkspaceGroup {
+                    id: format!("ws-{}", idx),
+                    name: name.to_string(),
+                    is_expanded: idx < 2, // Expand first two workspaces
+                    tasks,
                 }
-
-                // Add last message for some tasks
-                if rng.gen_bool(0.7) {
-                    let messages = vec![
-                        "Working on it...",
-                        "Almost done",
-                        "Need more information",
-                        "Completed successfully",
-                        "Encountered an error",
-                    ];
-                    task.last_message = Some(SharedString::from(messages[rng.gen_range(0..messages.len())]));
-                }
-
-                // Randomize created_at to test timeline view
-                let days_ago = rng.gen_range(0..30);
-                task.created_at = chrono::Utc::now() - chrono::Duration::days(days_ago);
-
-                Rc::new(task)
-            }).collect();
-
-            WorkspaceGroup {
-                id: format!("ws-{}", idx),
-                name: name.to_string(),
-                is_expanded: idx < 2, // Expand first two workspaces
-                tasks,
-            }
-        }).collect()
+            })
+            .collect()
     }
 
     fn toggle_workspace(&mut self, workspace_id: String, cx: &mut Context<Self>) {
@@ -300,9 +319,14 @@ impl TaskPanel {
                         // Reload workspace data
                         cx.update(|cx| {
                             if let Some(entity_strong) = entity.upgrade() {
-                                Self::load_workspace_data(&entity_strong, workspace_service.clone(), cx);
+                                Self::load_workspace_data(
+                                    &entity_strong,
+                                    workspace_service.clone(),
+                                    cx,
+                                );
                             }
-                        }).ok();
+                        })
+                        .ok();
                     }
                     Err(e) => {
                         log::error!("Failed to add workspace: {}", e);
@@ -357,13 +381,12 @@ impl TaskPanel {
                 h_flex()
                     .gap_2()
                     .items_center()
-                    .child(Icon::new(IconName::Inbox).size_4().text_color(theme.muted_foreground))
                     .child(
-                        div()
-                            .text_sm()
-                            .text_color(theme.foreground)
-                            .child("工作区"),
-                    ),
+                        Icon::new(IconName::Inbox)
+                            .size_4()
+                            .text_color(theme.muted_foreground),
+                    )
+                    .child(div().text_sm().text_color(theme.foreground).child("工作区")),
             )
             .child(
                 ButtonGroup::new("view-toggle")
@@ -415,24 +438,45 @@ impl TaskPanel {
             .child(
                 h_flex()
                     .gap_1()
-                    .child(Button::new("refresh").ghost().small().icon(IconName::Delete))
-                    .child(Button::new("monitor").ghost().small().icon(IconName::SquareTerminal))
-                    .child(Button::new("settings").ghost().small().icon(IconName::Settings)),
+                    .child(
+                        Button::new("refresh")
+                            .ghost()
+                            .small()
+                            .icon(IconName::Delete),
+                    )
+                    .child(
+                        Button::new("monitor")
+                            .ghost()
+                            .small()
+                            .icon(IconName::SquareTerminal),
+                    )
+                    .child(
+                        Button::new("settings")
+                            .ghost()
+                            .small()
+                            .icon(IconName::Settings),
+                    ),
             )
     }
 
     fn render_tree_view(&self, cx: &Context<Self>) -> impl IntoElement {
-        v_flex()
+        div()
+            .id("conversation-scroll-container")
             .flex_1()
-            .min_h_0()
-            .py_1()
-            .overflow_y_scrollbar()
-            .children(self.workspaces.iter().map(|workspace| {
-                self.render_workspace_group(workspace, cx)
-            }))
+            .overflow_y_scroll()
+            // .overflow_y_scrollbar()
+            .children(
+                self.workspaces
+                    .iter()
+                    .map(|workspace| self.render_workspace_group(workspace, cx)),
+            )
     }
 
-    fn render_workspace_group(&self, workspace: &WorkspaceGroup, cx: &Context<Self>) -> impl IntoElement {
+    fn render_workspace_group(
+        &self,
+        workspace: &WorkspaceGroup,
+        cx: &Context<Self>,
+    ) -> impl IntoElement {
         let theme = cx.theme();
         let workspace_id = workspace.id.clone();
         let workspace_id_for_toggle = workspace_id.clone();
@@ -490,10 +534,12 @@ impl TaskPanel {
                     }),
             )
             .when(is_expanded, |this| {
-                this.child(self.render_new_task_button(cx))
-                    .children(workspace.tasks.iter().map(|task| {
-                        self.render_task_item(task, cx)
-                    }))
+                this.child(self.render_new_task_button(cx)).children(
+                    workspace
+                        .tasks
+                        .iter()
+                        .map(|task| self.render_task_item(task, cx)),
+                )
             })
     }
 
@@ -552,7 +598,9 @@ impl TaskPanel {
             .py_2()
             .cursor_pointer()
             .when(is_selected, |s| s.bg(theme.accent))
-            .when(!is_selected, |s| s.hover(|s| s.bg(theme.accent.opacity(0.5))))
+            .when(!is_selected, |s| {
+                s.hover(|s| s.bg(theme.accent.opacity(0.5)))
+            })
             .on_click(cx.listener(move |this, _, window, cx| {
                 this.select_task(task_id_for_click.clone(), window, cx);
             }))
@@ -609,12 +657,7 @@ impl TaskPanel {
                             )
                             .child(div().child("·"))
                             .when_some(task.last_message.clone(), |this, msg| {
-                                this.child(
-                                    div()
-                                        .overflow_x_hidden()
-                                        .text_ellipsis()
-                                        .child(msg),
-                                )
+                                this.child(div().overflow_x_hidden().text_ellipsis().child(msg))
                             }),
                     )
                     .child(self.render_status_badge(&task.status, cx)),
@@ -622,7 +665,7 @@ impl TaskPanel {
     }
 
     fn render_timeline_view(&self, cx: &Context<Self>) -> impl IntoElement {
-        use chrono::{Local, Duration};
+        use chrono::{Duration, Local};
 
         // Flatten all tasks and categorize by date
         let mut all_tasks: Vec<Rc<WorkspaceTask>> = Vec::new();
@@ -701,9 +744,11 @@ impl TaskPanel {
                             .child(label.to_uppercase()),
                     ),
             )
-            .children(tasks.iter().map(|task| {
-                self.render_timeline_task_item(task, cx)
-            }))
+            .children(
+                tasks
+                    .iter()
+                    .map(|task| self.render_timeline_task_item(task, cx)),
+            )
     }
 
     fn render_timeline_task_item(
@@ -726,7 +771,9 @@ impl TaskPanel {
             .border_b_1()
             .border_color(theme.border.opacity(0.5))
             .when(is_selected, |s| s.bg(theme.accent))
-            .when(!is_selected, |s| s.hover(|s| s.bg(theme.accent.opacity(0.5))))
+            .when(!is_selected, |s| {
+                s.hover(|s| s.bg(theme.accent.opacity(0.5)))
+            })
             .on_click(cx.listener(move |this, _, window, cx| {
                 this.select_task(task_id_for_click.clone(), window, cx);
             }))
@@ -770,12 +817,7 @@ impl TaskPanel {
                     )
                     .when_some(task.last_message.clone(), |this, msg| {
                         this.child(div().child("·"))
-                            .child(
-                                div()
-                                    .overflow_x_hidden()
-                                    .text_ellipsis()
-                                    .child(msg),
-                            )
+                            .child(div().overflow_x_hidden().text_ellipsis().child(msg))
                     }),
             )
             .child(self.render_status_badge(&task.status, cx))
@@ -790,15 +832,12 @@ impl TaskPanel {
             TaskStatus::Failed => ("失败", gpui::rgb(0xef4444).into()),
         };
 
-        div()
-            .text_xs()
-            .text_color(color)
-            .child(label)
+        div().text_xs().text_color(color).child(label)
     }
 
     fn status_icon(&self, status: &TaskStatus) -> IconName {
         match status {
-            TaskStatus::Pending => IconName::Asterisk,  // Use Asterisk instead of Clock
+            TaskStatus::Pending => IconName::Asterisk, // Use Asterisk instead of Clock
             TaskStatus::InProgress => IconName::Loader,
             TaskStatus::Completed => IconName::CircleCheck,
             TaskStatus::Failed => IconName::CircleX,

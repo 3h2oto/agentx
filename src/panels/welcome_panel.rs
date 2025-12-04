@@ -67,7 +67,12 @@ impl ListDelegate for ContextListDelegate {
         self.items.len()
     }
 
-    fn render_item(&mut self, ix: IndexPath, _: &mut Window, _: &mut gpui::Context<'_, gpui_component::list::ListState<ContextListDelegate>>) -> Option<Self::Item> {
+    fn render_item(
+        &mut self,
+        ix: IndexPath,
+        _: &mut Window,
+        _: &mut gpui::Context<'_, gpui_component::list::ListState<ContextListDelegate>>,
+    ) -> Option<Self::Item> {
         let item = self.items.get(ix.row)?;
         Some(ListItem::new(ix).child(item.name))
     }

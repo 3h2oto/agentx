@@ -35,7 +35,12 @@ impl DockWorkspace {
     ///
     /// If session_id is provided, it will load the conversation history for that session
     /// Otherwise, it will create a new conversation panel with mock data
-    fn show_conversation_panel(&mut self, session_id: Option<String>, window: &mut Window, cx: &mut Context<Self>) {
+    fn show_conversation_panel(
+        &mut self,
+        session_id: Option<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let conversation_panel = if let Some(session_id) = session_id {
             // Create panel for specific session (will load history automatically)
             DockPanelContainer::panel_for_session(session_id, window, cx)
@@ -49,9 +54,7 @@ impl DockWorkspace {
 
         let conversation_dock = DockItem::split_with_sizes(
             Axis::Horizontal,
-            vec![
-                conversation_item
-            ],
+            vec![conversation_item],
             vec![None, None],
             &self.dock_area.downgrade(),
             window,

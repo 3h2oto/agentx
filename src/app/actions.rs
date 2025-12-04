@@ -139,16 +139,16 @@ pub struct NewSessionConversationPanel {
 actions!(
     story,
     [
-        About,                 // 显示关于对话框
-        Open,                  // 打开文件或项目
-        Quit,                  // 退出应用
-        CloseWindow,           // 关闭当前窗口
-        ToggleSearch,          // 切换搜索面板
-        TestAction,            // 测试用操作
-        Tab,                   // 切换到下一个标签页
-        TabPrev,               // 切换到上一个标签页
-        ShowPanelInfo,         // 显示面板信息
-        ShowWelcomePanel       // 显示欢迎面板
+        About,            // 显示关于对话框
+        Open,             // 打开文件或项目
+        Quit,             // 退出应用
+        CloseWindow,      // 关闭当前窗口
+        ToggleSearch,     // 切换搜索面板
+        TestAction,       // 测试用操作
+        Tab,              // 切换到下一个标签页
+        TabPrev,          // 切换到上一个标签页
+        ShowPanelInfo,    // 显示面板信息
+        ShowWelcomePanel  // 显示欢迎面板
     ]
 );
 

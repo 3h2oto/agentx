@@ -12,7 +12,7 @@ use anyhow::{anyhow, Result};
 use crate::core::event_bus::session_bus::{SessionUpdateBusContainer, SessionUpdateEvent};
 
 use super::agent_service::AgentService;
-use super::persistence_service::{PersistenceService, PersistedMessage};
+use super::persistence_service::{PersistedMessage, PersistenceService};
 
 /// Message service - handles message sending and event bus interaction
 pub struct MessageService {
@@ -49,7 +49,11 @@ impl MessageService {
             // Spawn async task using smol to save message
             smol::spawn(async move {
                 if let Err(e) = service.save_update(&session_id, update).await {
-                    log::error!("Failed to persist message for session {}: {}", session_id, e);
+                    log::error!(
+                        "Failed to persist message for session {}: {}",
+                        session_id,
+                        e
+                    );
                 }
             })
             .detach();
@@ -136,22 +140,16 @@ impl MessageService {
     ///
     /// Returns all persisted messages in chronological order
     pub async fn load_history(&self, session_id: &str) -> Result<Vec<PersistedMessage>> {
-        self.persistence_service
-            .load_messages(session_id)
-            .await
+        self.persistence_service.load_messages(session_id).await
     }
 
     /// Delete a session's history
     pub async fn delete_history(&self, session_id: &str) -> Result<()> {
-        self.persistence_service
-            .delete_session(session_id)
-            .await
+        self.persistence_service.delete_session(session_id).await
     }
 
     /// List all available sessions with history
     pub async fn list_sessions_with_history(&self) -> Result<Vec<String>> {
-        self.persistence_service
-            .list_sessions()
-            .await
+        self.persistence_service.list_sessions().await
     }
 }
