@@ -1,10 +1,11 @@
+use agent_client_protocol as acp;
 use gpui::*;
 use gpui_component::dock::{DockItem, DockPlacement};
 use rand;
 use std::sync::Arc;
 
 use crate::{
-    AddPanel, AppState, ConversationPanel, CreateTaskFromWelcome, NewSessionConversationPanel, SettingsPanel, ShowConversationPanel, ShowToolCallDetail, ShowWelcomePanel, ToggleDockToggleButton, TogglePanelVisible, ToolCallDetailPanel, WelcomePanel, app::{
+    AddPanel, AppState, ConversationPanel, CreateTaskFromWelcome, NewSessionConversationPanel, SettingsPanel, ShowConversationPanel, ShowToolCallDetail, ShowWelcomePanel, ToggleDockToggleButton, TogglePanelVisible, WelcomePanel, app::{
         self,
         actions::{Paste, Submit},
     }, panels::{DockPanel, dock_panel::DockPanelContainer}, title_bar::OpenSettings, utils
@@ -301,12 +302,14 @@ impl DockWorkspace {
         let agent_name = action.agent_name.clone();
         let task_input = action.task_input.clone();
         let mode = action.mode.clone();
+        let images = action.images.clone();
 
         log::info!(
-            "Creating task from welcome: agent={}, mode={}, input={}",
+            "Creating task from welcome: agent={}, mode={}, input={}, images={}",
             agent_name,
             mode,
-            task_input
+            task_input,
+            images.len()
         );
 
         // Check for existing welcome session (created by WelcomePanel)
@@ -442,9 +445,28 @@ impl DockWorkspace {
                 log::info!("[DockWorkspace] Task created ({})", task_id);
             });
 
-            // Step 4: Now send the message - panel is subscribed and will receive it
+            // Step 4: Build content blocks from text and images
+            let mut prompt_blocks: Vec<acp::ContentBlock> = Vec::new();
+
+            // Add text content
+            prompt_blocks.push(task_input.into());
+
+            // Add image contents - convert schema::ImageContent to agent_client_protocol::ImageContent
+            for (image_content, _filename) in images.iter() {
+                let acp_image = acp::ImageContent {
+                    annotations: None,
+                    data: image_content.data.clone(),
+                    mime_type: image_content.mime_type.clone(),
+                    uri: image_content.uri.clone(),
+                    meta: None,
+                };
+                prompt_blocks.push(acp::ContentBlock::Image(acp_image));
+            }
+            log::debug!("Built {} content blocks for prompt", prompt_blocks.len());
+
+            // Step 5: Now send the message - panel is subscribed and will receive it
             match message_service
-                .send_message_to_session(&agent_name, &session_id_for_send, task_input)
+                .send_message_to_session(&agent_name, &session_id_for_send, prompt_blocks)
                 .await
             {
                 Ok(_) => {

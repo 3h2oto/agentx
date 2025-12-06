@@ -149,13 +149,13 @@ impl AgentService {
         &self,
         agent_name: &str,
         session_id: &str,
-        prompt: Vec<String>,
+        prompt: Vec<acp::ContentBlock>,
     ) -> Result<()> {
         let agent_handle = self.get_agent_handle(agent_name)?;
 
         let request = acp::PromptRequest {
             session_id: acp::SessionId::from(session_id.to_string()),
-            prompt: prompt.into_iter().map(|s| s.into()).collect(),
+            prompt,
             meta: None,
         };
 

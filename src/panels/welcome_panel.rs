@@ -546,17 +546,18 @@ impl WelcomePanel {
                 state.set_value("", window, cx);
             });
 
-            // Clear pasted images after sending
-            self.pasted_images.clear();
-
-            // Dispatch CreateTaskFromWelcome action
+            // Dispatch CreateTaskFromWelcome action with images
             let action = CreateTaskFromWelcome {
                 task_input: task_name.clone(),
                 agent_name: agent_name.clone(),
                 mode,
+                images: self.pasted_images.clone(),
             };
 
             window.dispatch_action(Box::new(action), cx);
+
+            // Clear pasted images after dispatching action
+            self.pasted_images.clear();
         }
     }
 }

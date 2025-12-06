@@ -741,63 +741,63 @@ impl ConversationPanel {
                 update: Arc::new(schema::SessionUpdate::UserMessageChunk(content_chunk)),
             };
 
-            // Publish to session bus
-            cx.update(|cx| {
-                AppState::global(cx).session_bus.publish(user_event);
-            })
-            .ok();
-            log::info!("Published user message to session bus: {}", session_id);
+            // // Publish to session bus
+            // cx.update(|cx| {
+            //     AppState::global(cx).session_bus.publish(user_event);
+            // })
+            // .ok();
+            // log::info!("Published user message to session bus: {}", session_id);
 
-            // Get agent handle and send prompt
-            let agent_handle: Option<std::sync::Arc<AgentHandle>> = cx
-                .update(|cx| {
-                    AppState::global(cx).agent_manager().and_then(|m| {
-                        // Get the first available agent
-                        let agents = m.list_agents();
-                        agents.first().and_then(|name| m.get(name))
-                    })
-                })
-                .ok()
-                .flatten();
+            // // Get agent handle and send prompt
+            // let agent_handle: Option<std::sync::Arc<AgentHandle>> = cx
+            //     .update(|cx| {
+            //         AppState::global(cx).agent_manager().and_then(|m| {
+            //             // Get the first available agent
+            //             let agents = m.list_agents();
+            //             agents.first().and_then(|name| m.get(name))
+            //         })
+            //     })
+            //     .ok()
+            //     .flatten();
 
-            if let Some(agent_handle) = agent_handle {
-                // Build prompt with text and images
-                let mut prompt_blocks: Vec<agent_client_protocol::ContentBlock> = Vec::new();
+            // if let Some(agent_handle) = agent_handle {
+            //     // Build prompt with text and images
+            //     let mut prompt_blocks: Vec<agent_client_protocol::ContentBlock> = Vec::new();
 
-                // Add text content
-                prompt_blocks.push(text.clone().into());
+            //     // Add text content
+            //     prompt_blocks.push(text.clone().into());
 
-                // Add image contents - convert schema::ImageContent to agent_client_protocol::ImageContent
-                for (image_content, _filename) in images_clone.iter() {
-                    // Create agent_client_protocol::ImageContent from the data
-                    let acp_image = agent_client_protocol::ImageContent {
-                        annotations: None,
-                        data: image_content.data.clone(),
-                        mime_type: image_content.mime_type.clone(),
-                        uri: image_content.uri.clone(),
-                        meta: None,
-                    };
-                    prompt_blocks.push(agent_client_protocol::ContentBlock::Image(acp_image));
-                }
-                log::debug!("---------> Sending prompt: {:?}", prompt_blocks);
-                // Send the prompt
-                let request = agent_client_protocol::PromptRequest {
-                    session_id: agent_client_protocol::SessionId::from(session_id.clone()),
-                    prompt: prompt_blocks,
-                    meta: None,
-                };
+            //     // Add image contents - convert schema::ImageContent to agent_client_protocol::ImageContent
+            //     for (image_content, _filename) in images_clone.iter() {
+            //         // Create agent_client_protocol::ImageContent from the data
+            //         let acp_image = agent_client_protocol::ImageContent {
+            //             annotations: None,
+            //             data: image_content.data.clone(),
+            //             mime_type: image_content.mime_type.clone(),
+            //             uri: image_content.uri.clone(),
+            //             meta: None,
+            //         };
+            //         prompt_blocks.push(agent_client_protocol::ContentBlock::Image(acp_image));
+            //     }
+            //     log::debug!("---------> Sending prompt: {:?}", prompt_blocks);
+            //     // Send the prompt
+            //     let request = agent_client_protocol::PromptRequest {
+            //         session_id: agent_client_protocol::SessionId::from(session_id.clone()),
+            //         prompt: prompt_blocks,
+            //         meta: None,
+            //     };
 
-                match agent_handle.prompt(request).await {
-                    Ok(_) => {
-                        log::info!("Prompt sent successfully to session: {}", session_id);
-                    }
-                    Err(e) => {
-                        log::error!("Failed to send prompt to session {}: {}", session_id, e);
-                    }
-                }
-            } else {
-                log::error!("No agent handle available");
-            }
+            //     match agent_handle.prompt(request).await {
+            //         Ok(_) => {
+            //             log::info!("Prompt sent successfully to session: {}", session_id);
+            //         }
+            //         Err(e) => {
+            //             log::error!("Failed to send prompt to session {}: {}", session_id, e);
+            //         }
+            //     }
+            // } else {
+            //     log::error!("No agent handle available");
+            // }
         })
         .detach();
     }

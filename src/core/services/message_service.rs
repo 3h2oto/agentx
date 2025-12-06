@@ -5,6 +5,7 @@
 
 use std::sync::Arc;
 
+use agent_client_protocol as acp;
 use agent_client_protocol_schema as schema;
 use agent_client_protocol_schema::SessionUpdate;
 use anyhow::{anyhow, Result};
@@ -75,7 +76,7 @@ impl MessageService {
         &self,
         agent_name: &str,
         session_id: &str,
-        message: String,
+        content_blocks: Vec<acp::ContentBlock>,
     ) -> Result<()> {
         // 1. Verify session exists
         if self
@@ -86,12 +87,14 @@ impl MessageService {
             return Err(anyhow!("Session not found: {}", session_id));
         }
 
-        // 2. Publish user message to event bus (immediate UI feedback)
-        self.publish_user_message(session_id, &message);
+        // 2. Publish user message blocks to event bus (immediate UI feedback)
+        for block in &content_blocks {
+            self.publish_user_content_block(session_id, block);
+        }
 
         // 3. Send prompt to agent
         self.agent_service
-            .send_prompt(agent_name, session_id, vec![message])
+            .send_prompt(agent_name, session_id, content_blocks)
             .await
             .map_err(|e| anyhow!("Failed to send message: {}", e))?;
 
@@ -110,6 +113,37 @@ impl MessageService {
 
         self.session_bus.publish(user_event);
         log::debug!("Published user message to session bus: {}", session_id);
+    }
+
+    /// Publish a user content block to the event bus
+    ///
+    /// Converts protocol ContentBlock to schema ContentBlock and publishes to the event bus
+    pub fn publish_user_content_block(&self, session_id: &str, block: &acp::ContentBlock) {
+        // Convert protocol ContentBlock to schema ContentBlock
+        let schema_block = match block {
+            acp::ContentBlock::Text(text) => {
+                // Create TextContent using new() or default methods to handle non-exhaustive struct
+                let mut text_content = schema::TextContent::new(text.text.clone());
+                // Note: annotations field might not be directly settable due to version mismatch
+                schema::ContentBlock::Text(text_content)
+            }
+            acp::ContentBlock::Image(img) => {
+                // Create ImageContent using new() method
+                let image_content = schema::ImageContent::new(img.data.clone(), img.mime_type.clone());
+                schema::ContentBlock::Image(image_content)
+            }
+            // Handle other block types if needed
+            _ => return,
+        };
+
+        let content_chunk = schema::ContentChunk::new(schema_block);
+        let user_event = SessionUpdateEvent {
+            session_id: session_id.to_string(),
+            update: Arc::new(schema::SessionUpdate::UserMessageChunk(content_chunk)),
+        };
+
+        self.session_bus.publish(user_event);
+        log::debug!("Published user content block to session bus: {}", session_id);
     }
 
     /// Subscribe to session updates

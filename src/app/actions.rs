@@ -3,7 +3,7 @@
 //! 本模块集中管理所有应用中使用的 GPUI Actions，便于维护和查找。
 //! Actions 是 GPUI 中用于触发用户操作的类型安全机制。
 
-use agent_client_protocol_schema::ToolCall;
+use agent_client_protocol_schema::{ImageContent, ToolCall};
 use gpui::{actions, Action, SharedString};
 use gpui_component::{dock::DockPlacement, scroll::ScrollbarShow, ThemeMode};
 use serde::Deserialize;
@@ -126,16 +126,18 @@ pub struct SelectRadius(pub usize);
 
 /// 从欢迎面板创建新任务
 ///
-/// 参数为任务和 Agent 参数，用于快速创建新的 Agent 任务
-#[derive(Action, Clone, Debug, PartialEq, Eq, Deserialize)]
+/// 参数为任务和 Agent 参数,用于快速创建新的 Agent 任务
+#[derive(Action, Clone, Debug, PartialEq, Deserialize)]
 #[action(namespace = story, no_json)]
 pub struct CreateTaskFromWelcome {
-    /// 任务描述，由用户输入
+    /// 任务描述,由用户输入
     pub task_input: String,
     /// 使用的 Agent 名称
     pub agent_name: String,
     /// 任务模式
     pub mode: String,
+    /// 附加的图片列表 (ImageContent, filename)
+    pub images: Vec<(ImageContent, String)>,
 }
 /// 显示会话对话面板
 ///
