@@ -13,6 +13,7 @@ use std::{
 };
 
 use agent_client_protocol::{self as acp, Agent as _};
+
 use anyhow::{anyhow, Context, Result};
 use log::{error, warn};
 use tokio::{
@@ -26,7 +27,7 @@ use crate::core::event_bus::{
     permission_bus::{PermissionBusContainer, PermissionRequestEvent},
     session_bus::{SessionUpdateBusContainer, SessionUpdateEvent},
 };
-use agent_client_protocol as schema;
+
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
 #[derive(Clone)]
@@ -309,7 +310,7 @@ async fn agent_event_loop(
 /// Convert from agent_client_protocol SessionUpdate to agent_client_protocol SessionUpdate
 ///
 /// Uses JSON serialization/deserialization as a bridge between the two incompatible versions
-fn convert_session_update(update: &acp::SessionUpdate) -> schema::SessionUpdate {
+fn convert_session_update(update: &acp::SessionUpdate) -> acp::SessionUpdate {
     // Serialize the protocol version to JSON
     let json_value =
         serde_json::to_value(update).expect("Failed to serialize SessionUpdate from protocol");

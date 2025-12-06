@@ -1,6 +1,6 @@
+use agent_client_protocol::{ContentBlock, EmbeddedResourceResource, SessionUpdate, ToolKind};
 /// Helper functions for ConversationPanel
 use regex::Regex;
-
 /// Extract text content from XML-like tags using regex based on ToolKind
 /// For example: "```\n<tool_use_error>File does not exist.</tool_use_error>\n```"
 /// Returns: "File does not exist."
@@ -8,13 +8,11 @@ use regex::Regex;
 /// This function decides whether to extract XML content based on the tool type:
 /// - For Execute, Other, and similar types: Extract XML content
 /// - For other types: Return original text
-pub fn extract_xml_content(text: &str, tool_kind: &agent_client_protocol::ToolKind) -> String {
+pub fn extract_xml_content(text: &str, tool_kind: &ToolKind) -> String {
     // Decide whether to extract XML based on tool kind
     let should_extract = matches!(
         tool_kind,
-        agent_client_protocol::ToolKind::Execute
-            | agent_client_protocol::ToolKind::Other
-            | agent_client_protocol::ToolKind::Read
+        ToolKind::Execute | ToolKind::Other | ToolKind::Read
     );
 
     if !should_extract {
@@ -61,9 +59,7 @@ pub fn get_element_id(id: &str) -> gpui::ElementId {
 }
 
 /// Extract text from ContentBlock for display
-pub fn extract_text_from_content(content: &agent_client_protocol::ContentBlock) -> String {
-    use agent_client_protocol::{ContentBlock, EmbeddedResourceResource};
-
+pub fn extract_text_from_content(content: &ContentBlock) -> String {
     match content {
         ContentBlock::Text(text_content) => text_content.text.clone(),
         ContentBlock::Image(img) => {
@@ -93,9 +89,7 @@ pub fn extract_text_from_content(content: &agent_client_protocol::ContentBlock) 
 }
 
 /// Get a human-readable type name for SessionUpdate (for logging)
-pub fn session_update_type_name(update: &agent_client_protocol::SessionUpdate) -> &'static str {
-    use agent_client_protocol::SessionUpdate;
-
+pub fn session_update_type_name(update: &SessionUpdate) -> &'static str {
     match update {
         SessionUpdate::UserMessageChunk(_) => "UserMessageChunk",
         SessionUpdate::AgentMessageChunk(_) => "AgentMessageChunk",

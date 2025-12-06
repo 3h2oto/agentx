@@ -5,9 +5,7 @@
 
 use std::sync::Arc;
 
-use agent_client_protocol as acp;
-use agent_client_protocol as schema;
-use agent_client_protocol::SessionUpdate;
+use agent_client_protocol::{ContentBlock, ContentChunk, ImageContent, SessionUpdate, TextContent};
 use anyhow::{anyhow, Result};
 
 use crate::core::event_bus::session_bus::{SessionUpdateBusContainer, SessionUpdateEvent};
@@ -76,7 +74,7 @@ impl MessageService {
         &self,
         agent_name: &str,
         session_id: &str,
-        content_blocks: Vec<acp::ContentBlock>,
+        content_blocks: Vec<ContentBlock>,
     ) -> Result<()> {
         // 1. Verify session exists
         if self
@@ -103,12 +101,12 @@ impl MessageService {
 
     /// Publish a user message to the event bus (immediate UI feedback)
     pub fn publish_user_message(&self, session_id: &str, message: &str) {
-        let content_block = schema::ContentBlock::from(message.to_string());
-        let content_chunk = schema::ContentChunk::new(content_block);
+        let content_block = ContentBlock::from(message.to_string());
+        let content_chunk = ContentChunk::new(content_block);
 
         let user_event = SessionUpdateEvent {
             session_id: session_id.to_string(),
-            update: Arc::new(schema::SessionUpdate::UserMessageChunk(content_chunk)),
+            update: Arc::new(SessionUpdate::UserMessageChunk(content_chunk)),
         };
 
         self.session_bus.publish(user_event);
@@ -118,29 +116,28 @@ impl MessageService {
     /// Publish a user content block to the event bus
     ///
     /// Converts protocol ContentBlock to schema ContentBlock and publishes to the event bus
-    pub fn publish_user_content_block(&self, session_id: &str, block: &acp::ContentBlock) {
+    pub fn publish_user_content_block(&self, session_id: &str, block: &ContentBlock) {
         // Convert protocol ContentBlock to schema ContentBlock
         let schema_block = match block {
-            acp::ContentBlock::Text(text) => {
+            ContentBlock::Text(text) => {
                 // Create TextContent using new() or default methods to handle non-exhaustive struct
-                let text_content = schema::TextContent::new(text.text.clone());
+                let text_content = TextContent::new(text.text.clone());
                 // Note: annotations field might not be directly settable due to version mismatch
-                schema::ContentBlock::Text(text_content)
+                ContentBlock::Text(text_content)
             }
-            acp::ContentBlock::Image(img) => {
+            ContentBlock::Image(img) => {
                 // Create ImageContent using new() method
-                let image_content =
-                    schema::ImageContent::new(img.data.clone(), img.mime_type.clone());
-                schema::ContentBlock::Image(image_content)
+                let image_content = ImageContent::new(img.data.clone(), img.mime_type.clone());
+                ContentBlock::Image(image_content)
             }
             // Handle other block types if needed
             _ => return,
         };
 
-        let content_chunk = schema::ContentChunk::new(schema_block);
+        let content_chunk = ContentChunk::new(schema_block);
         let user_event = SessionUpdateEvent {
             session_id: session_id.to_string(),
-            update: Arc::new(schema::SessionUpdate::UserMessageChunk(content_chunk)),
+            update: Arc::new(SessionUpdate::UserMessageChunk(content_chunk)),
         };
 
         self.session_bus.publish(user_event);

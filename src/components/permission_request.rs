@@ -1,4 +1,4 @@
-use agent_client_protocol::{PermissionOption, PermissionOptionKind};
+use agent_client_protocol::{self as acp, PermissionOption, PermissionOptionKind};
 use gpui::{
     div, prelude::FluentBuilder as _, px, App, AppContext, Context, Entity, IntoElement,
     ParentElement, Render, SharedString, Styled, Window,
@@ -48,8 +48,8 @@ impl PermissionRequest {
     pub fn new(
         permission_id: String,
         session_id: String,
-        tool_call: &agent_client_protocol::ToolCallUpdate,
-        options: Vec<agent_client_protocol::PermissionOption>,
+        tool_call: &acp::ToolCallUpdate,
+        options: Vec<acp::PermissionOption>,
     ) -> Self {
         let tool_title = tool_call
             .fields
@@ -90,11 +90,10 @@ impl PermissionRequest {
 
         if let Some(store) = permission_store {
             let permission_id = self.permission_id.clone();
-            let response = agent_client_protocol::RequestPermissionResponse::new(
-                agent_client_protocol::RequestPermissionOutcome::Selected(
-                    agent_client_protocol::SelectedPermissionOutcome::new(option_id),
-                ),
-            );
+            let response =
+                acp::RequestPermissionResponse::new(acp::RequestPermissionOutcome::Selected(
+                    acp::SelectedPermissionOutcome::new(option_id),
+                ));
 
             // Spawn a task to send the response
             cx.spawn(async move |_entity, _cx| {
@@ -222,8 +221,8 @@ impl PermissionRequestView {
     pub fn new(
         permission_id: String,
         session_id: String,
-        tool_call: &agent_client_protocol::ToolCallUpdate,
-        options: Vec<agent_client_protocol::PermissionOption>,
+        tool_call: &acp::ToolCallUpdate,
+        options: Vec<acp::PermissionOption>,
         _window: &mut Window,
         cx: &mut App,
     ) -> Entity<Self> {

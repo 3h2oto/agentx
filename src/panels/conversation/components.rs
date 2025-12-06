@@ -9,7 +9,10 @@ use gpui_component::{
     h_flex, v_flex, ActiveTheme, Icon, IconName, Sizable,
 };
 
-use agent_client_protocol::{ContentBlock, ToolCall, ToolCallContent, ToolCallStatus};
+use agent_client_protocol::{
+    ContentBlock, ToolCall, ToolCallContent, ToolCallId, ToolCallStatus, ToolCallUpdateFields,
+    ToolKind,
+};
 
 use super::helpers::extract_xml_content;
 use super::types::{get_file_icon, ResourceInfo, ToolCallStatusExt, ToolKindExt};
@@ -153,11 +156,7 @@ impl ToolCallItemState {
     }
 
     /// Update this tool call with fields from a ToolCallUpdate
-    pub fn apply_update(
-        &mut self,
-        update_fields: agent_client_protocol::ToolCallUpdateFields,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn apply_update(&mut self, update_fields: ToolCallUpdateFields, cx: &mut Context<Self>) {
         log::debug!("Applying update to tool call: {:?}", update_fields);
         // Use the built-in update method from ToolCall
         self.tool_call.update(update_fields);
@@ -176,7 +175,7 @@ impl ToolCallItemState {
     }
 
     /// Get the tool call ID for matching updates
-    pub fn tool_call_id(&self) -> &agent_client_protocol::ToolCallId {
+    pub fn tool_call_id(&self) -> &ToolCallId {
         &self.tool_call.tool_call_id
     }
 
@@ -184,8 +183,6 @@ impl ToolCallItemState {
     /// For Read tools, formats as: filename#L<offset>-<offset+limit>
     /// For other tools, returns the original title
     fn get_display_title(&self) -> String {
-        use agent_client_protocol::ToolKind;
-
         // Only format Read tool calls
         if !matches!(self.tool_call.kind, ToolKind::Read) {
             return self.tool_call.title.clone();

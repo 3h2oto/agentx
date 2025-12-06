@@ -555,19 +555,17 @@ impl TaskPanel {
             .border_color(theme.border)
             .child(
                 // Search box
-                div()
-                    .flex_1()
-                    .child(
-                        Input::new(&self.search_input)
-                            .small()
-                            // .bordered(false)
-                            .cleanable(true)
-                            .prefix(
-                                Icon::new(IconName::Search)
-                                    .size_4()
-                                    .text_color(theme.muted_foreground),
-                            ),
-                    ),
+                div().flex_1().child(
+                    Input::new(&self.search_input)
+                        .small()
+                        // .bordered(false)
+                        .cleanable(true)
+                        .prefix(
+                            Icon::new(IconName::Search)
+                                .size_4()
+                                .text_color(theme.muted_foreground),
+                        ),
+                ),
             )
             .child(
                 // View toggle buttons

@@ -1,3 +1,4 @@
+use agent_client_protocol as acp;
 use std::sync::Arc;
 
 /// Permission request event that can be broadcast to subscribers
@@ -10,9 +11,9 @@ pub struct PermissionRequestEvent {
     /// Agent name requesting permission
     pub agent_name: String,
     /// Tool call details
-    pub tool_call: agent_client_protocol::ToolCallUpdate,
+    pub tool_call: acp::ToolCallUpdate,
     /// Available permission options
-    pub options: Vec<agent_client_protocol::PermissionOption>,
+    pub options: Vec<acp::PermissionOption>,
 }
 
 /// Global event bus for permission requests
