@@ -386,7 +386,11 @@ impl CodeEditorPanel {
             }))
     }
 
-    fn render_go_to_line_button(&self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_go_to_line_button(
+        &self,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
         let position = self.editor.read(cx).cursor_position();
         let cursor = self.editor.read(cx).cursor();
 
@@ -464,7 +468,8 @@ impl CodeEditorPanel {
         });
 
         // 获取当前文件路径
-        let file_path = self.current_file_path
+        let file_path = self
+            .current_file_path
             .as_ref()
             .and_then(|p| p.to_str())
             .unwrap_or("untitled")
@@ -501,9 +506,7 @@ impl CodeEditorPanel {
             .clone()
             .lock()
             .map(|bus| {
-                bus.publish(crate::core::event_bus::CodeSelectionEvent {
-                    selection: action,
-                });
+                bus.publish(crate::core::event_bus::CodeSelectionEvent { selection: action });
                 log::info!("[CodeEditorPanel] Event published successfully to CodeSelectionBus");
             })
             .unwrap_or_else(|_| {
@@ -525,21 +528,21 @@ impl CodeEditorPanel {
                         div()
                             .child(IconName::File)
                             .text_color(cx.theme().muted_foreground)
-                            .text_size(px(48.))
+                            .text_size(px(48.)),
                     )
                     .child(
                         div()
                             .text_xl()
                             .font_semibold()
                             .text_color(cx.theme().foreground)
-                            .child("No File Opened")
+                            .child("No File Opened"),
                     )
                     .child(
                         div()
                             .text_sm()
                             .text_color(cx.theme().muted_foreground)
-                            .child("Select a file from the file tree to start editing")
-                    )
+                            .child("Select a file from the file tree to start editing"),
+                    ),
             )
     }
 }

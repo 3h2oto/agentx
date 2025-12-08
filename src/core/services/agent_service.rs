@@ -155,7 +155,12 @@ impl AgentService {
     pub fn update_session_status(&self, agent_name: &str, session_id: &str, status: SessionStatus) {
         if let Some(agent_sessions) = self.sessions.write().unwrap().get_mut(agent_name) {
             if let Some(info) = agent_sessions.get_mut(session_id) {
-                log::info!("Updating session status for {}:{} to {:?}", agent_name, session_id, &status);
+                log::info!(
+                    "Updating session status for {}:{} to {:?}",
+                    agent_name,
+                    session_id,
+                    &status
+                );
                 info.status = status.clone();
 
                 // Publish status update to workspace bus

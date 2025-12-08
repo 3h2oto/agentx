@@ -1,5 +1,6 @@
 use gpui::{
-    App, ClipboardEntry, Context, Entity, FocusHandle, Focusable, IntoElement, ParentElement, Render, ScrollHandle, SharedString, Styled, Window, div, prelude::*, px
+    div, prelude::*, px, App, ClipboardEntry, Context, Entity, FocusHandle, Focusable, IntoElement,
+    ParentElement, Render, ScrollHandle, SharedString, Styled, Window,
 };
 use gpui_component::{
     h_flex, input::InputState, scroll::ScrollableElement, v_flex, ActiveTheme, Icon, IconName,
@@ -10,9 +11,8 @@ use agent_client_protocol::{ContentChunk, ImageContent, SessionUpdate, ToolCall}
 use chrono::{DateTime, Utc};
 
 use crate::{
-    app::actions::AddCodeSelection, panels::dock_panel::DockPanel, AgentMessage, AgentTodoList,
-    AppState, ChatInputBox, SendMessageToSession,
-    core::services::SessionStatus,
+    app::actions::AddCodeSelection, core::services::SessionStatus, panels::dock_panel::DockPanel,
+    AgentMessage, AgentTodoList, AppState, ChatInputBox, SendMessageToSession,
 };
 
 // Import from submodules
@@ -855,7 +855,10 @@ impl ConversationPanel {
             return;
         };
 
-        log::info!("Dispatching SendMessageToSession action for session: {}", session_id);
+        log::info!(
+            "Dispatching SendMessageToSession action for session: {}",
+            session_id
+        );
 
         // Create action and dispatch to workspace
         let action = SendMessageToSession {
@@ -935,7 +938,11 @@ impl ConversationPanel {
                                     h_flex()
                                         .items_center()
                                         .gap_1()
-                                        .child(Icon::new(status_icon).size(px(12.)).text_color(status_color))
+                                        .child(
+                                            Icon::new(status_icon)
+                                                .size(px(12.))
+                                                .text_color(status_color),
+                                        )
                                         .child(
                                             div()
                                                 .text_xs()
@@ -979,7 +986,10 @@ impl ConversationPanel {
                                                 div()
                                                     .text_xs()
                                                     .text_color(cx.theme().muted_foreground)
-                                                    .child(format!("{}", status_info.message_count)),
+                                                    .child(format!(
+                                                        "{}",
+                                                        status_info.message_count
+                                                    )),
                                             ),
                                     )
                                 }),
@@ -1136,7 +1146,9 @@ impl Render for ConversationPanel {
                         ChatInputBox::new("chat-input", self.input_state.clone())
                             .pasted_images(self.pasted_images.clone())
                             .code_selections(self.code_selections.clone())
-                            .session_status(self.session_status.as_ref().map(|info| info.status.clone()))
+                            .session_status(
+                                self.session_status.as_ref().map(|info| info.status.clone()),
+                            )
                             .on_paste(move |window, cx| {
                                 entity.update(cx, |this, cx| {
                                     this.handle_paste(window, cx);

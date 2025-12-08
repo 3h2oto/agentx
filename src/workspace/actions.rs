@@ -9,8 +9,7 @@ use crate::{
     title_bar::OpenSettings,
     utils, AddPanel, AppState, ConversationPanel, CreateTaskFromWelcome,
     NewSessionConversationPanel, SendMessageToSession, SettingsPanel, ShowConversationPanel,
-    ShowToolCallDetail, ShowWelcomePanel, ToggleDockToggleButton, TogglePanelVisible,
-    WelcomePanel,
+    ShowToolCallDetail, ShowWelcomePanel, ToggleDockToggleButton, TogglePanelVisible, WelcomePanel,
 };
 
 use super::DockWorkspace;
@@ -461,7 +460,8 @@ impl DockWorkspace {
                 Ok(response) => {
                     log::info!(
                         "Message sent successfully to session {}, Response: {:?}",
-                        session_id_for_send, response
+                        session_id_for_send,
+                        response
                     );
                 }
                 Err(e) => {

@@ -47,7 +47,7 @@ pub struct ChatInputBox {
     on_remove_image: Option<Rc<dyn Fn(&usize, &mut Window, &mut App) + 'static>>,
     on_remove_code_selection: Option<Rc<dyn Fn(&usize, &mut Window, &mut App) + 'static>>,
     on_paste: Option<Rc<dyn Fn(&mut Window, &mut App) + 'static>>,
-    session_status: Option<SessionStatus>,      // Session status for button state
+    session_status: Option<SessionStatus>, // Session status for button state
 }
 
 impl ChatInputBox {
@@ -360,7 +360,8 @@ impl RenderOnce for ChatInputBox {
                                         .unwrap_or(&selection.file_path);
 
                                     // Format the display text as "filename:start_line~end_line"
-                                    let display_text = if selection.start_line == selection.end_line {
+                                    let display_text = if selection.start_line == selection.end_line
+                                    {
                                         format!("{}:{}", filename, selection.start_line)
                                     } else {
                                         format!(
@@ -467,7 +468,7 @@ impl RenderOnce for ChatInputBox {
                                 let (icon, is_in_progress) = match self.session_status {
                                     Some(SessionStatus::InProgress) => {
                                         (Icon::new(crate::assets::Icon::SquarePause), true)
-                                    }, 
+                                    }
                                     _ => (Icon::new(IconName::ArrowUp), false),
                                 };
 

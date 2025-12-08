@@ -1,7 +1,7 @@
+use agentx::Assets;
 use agentx::{workspace::open_new, AgentManager, Config, PermissionStore, Settings};
 use anyhow::Context as _;
 use gpui::Application;
-use agentx::Assets;
 use std::sync::Arc;
 
 fn main() {

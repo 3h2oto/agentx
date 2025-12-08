@@ -1,6 +1,6 @@
 use gpui::{
-    px, App, AppContext, ClipboardEntry, Context, Entity, FocusHandle, Focusable, IntoElement,
-    InteractiveElement, ParentElement, Render, Styled, Subscription, Window,
+    px, App, AppContext, ClipboardEntry, Context, Entity, FocusHandle, Focusable,
+    InteractiveElement, IntoElement, ParentElement, Render, Styled, Subscription, Window,
 };
 
 use gpui_component::{

@@ -1,6 +1,7 @@
 /// UI Components for ConversationPanel
 use gpui::{
-    div, prelude::*, px, Context, Entity, IntoElement, ParentElement, Render, SharedString, Styled, Window,
+    div, prelude::*, px, Context, Entity, IntoElement, ParentElement, Render, SharedString, Styled,
+    Window,
 };
 use gpui_component::{
     button::{Button, ButtonVariants},
