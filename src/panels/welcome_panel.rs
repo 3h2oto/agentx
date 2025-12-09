@@ -275,32 +275,13 @@ impl WelcomePanel {
             )
         });
 
-        // Get available agents from AppState
-        let agents = AppState::global(cx)
-            .agent_manager()
-            .map(|m| m.list_agents())
-            .unwrap_or_default();
+        // Get available agents from AppState - we'll load them asynchronously
+        // For now, start with placeholder
+        let agent_list = vec!["Loading agents...".to_string()];
+        let agent_select = cx.new(|cx| SelectState::new(agent_list, None, window, cx));
 
-        let has_agents = !agents.is_empty();
-
-        // Save first agent name for initializing sessions
-        let first_agent = agents.first().cloned();
-
-        // Default to first agent if available
-        let default_agent = if has_agents {
-            Some(IndexPath::default())
-        } else {
-            None
-        };
-
-        // Use placeholder if no agents available
-        let agent_list = if has_agents {
-            agents
-        } else {
-            vec!["No agents".to_string()]
-        };
-
-        let agent_select = cx.new(|cx| SelectState::new(agent_list, default_agent, window, cx));
+        let has_agents = false; // Will be updated after async load
+        let first_agent: Option<String> = None;
 
         // Initialize session selector (initially empty)
         let session_select =
@@ -340,22 +321,34 @@ impl WelcomePanel {
             return;
         }
 
-        let agents = AppState::global(cx)
-            .agent_manager()
-            .map(|m| m.list_agents())
-            .unwrap_or_default();
+        let agent_service = match AppState::global(cx).agent_service() {
+            Some(service) => service.clone(),
+            None => return,
+        };
 
-        if agents.is_empty() {
-            return;
-        }
+        let agent_select = self.agent_select.clone();
+        cx.spawn(|mut this, mut cx: async_watch::AsyncWindowContext| async move {
+            let agents = agent_service.list_agents().await;
 
-        // We now have agents, update the select
-        self.has_agents = true;
-        self.agent_select.update(cx, |state, cx| {
-            state.set_items(agents, window, cx);
-            state.set_selected_index(Some(IndexPath::default()), window, cx);
-        });
-        cx.notify();
+            if agents.is_empty() {
+                return Ok(());
+            }
+
+            cx.update(|cx| {
+                this.update(cx, |this, cx| {
+                    // We now have agents, update the select
+                    this.has_agents = true;
+                    let agents_clone = agents.clone();
+                    let window_handle = cx.window_handle();
+                    agent_select.update(cx, |state, cx| {
+                        state.set_items(agents_clone, window_handle.root(cx), cx);
+                        state.set_selected_index(Some(IndexPath::default()), window_handle.root(cx), cx);
+                    });
+                    cx.notify();
+                })
+            })
+        })
+        .detach();
     }
 
     /// Handle agent selection change - refresh sessions for the newly selected agent

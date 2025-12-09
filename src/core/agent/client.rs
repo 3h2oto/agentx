@@ -32,7 +32,10 @@ use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
 #[derive(Clone)]
 pub struct AgentManager {
-    agents: HashMap<String, Arc<AgentHandle>>,
+    agents: Arc<RwLock<HashMap<String, Arc<AgentHandle>>>>,
+    permission_store: Arc<PermissionStore>,
+    session_bus: SessionUpdateBusContainer,
+    permission_bus: PermissionBusContainer,
 }
 
 impl AgentManager {
@@ -67,17 +70,98 @@ impl AgentManager {
         if agents.is_empty() {
             warn!("No agents could be initialized, continuing without agents");
         }
-        Ok(Arc::new(Self { agents }))
+        Ok(Arc::new(Self {
+            agents: Arc::new(RwLock::new(agents)),
+            permission_store,
+            session_bus,
+            permission_bus,
+        }))
     }
 
-    pub fn list_agents(&self) -> Vec<String> {
-        let mut list = self.agents.keys().cloned().collect::<Vec<_>>();
+    pub async fn list_agents(&self) -> Vec<String> {
+        let agents = self.agents.read().await;
+        let mut list = agents.keys().cloned().collect::<Vec<_>>();
         list.sort();
         list
     }
 
-    pub fn get(&self, name: &str) -> Option<Arc<AgentHandle>> {
-        self.agents.get(name).cloned()
+    pub async fn get(&self, name: &str) -> Option<Arc<AgentHandle>> {
+        let agents = self.agents.read().await;
+        agents.get(name).cloned()
+    }
+
+    /// Add a new agent to the manager
+    pub async fn add_agent(&self, name: String, config: AgentProcessConfig) -> Result<()> {
+        // Check if agent already exists
+        {
+            let agents = self.agents.read().await;
+            if agents.contains_key(&name) {
+                return Err(anyhow!("Agent '{}' already exists", name));
+            }
+        }
+
+        // Spawn new agent
+        let handle = AgentHandle::spawn(
+            name.clone(),
+            config,
+            self.permission_store.clone(),
+            self.session_bus.clone(),
+            self.permission_bus.clone(),
+        )
+        .await?;
+
+        // Add to agents map
+        let mut agents = self.agents.write().await;
+        agents.insert(name.clone(), Arc::new(handle));
+        log::info!("Successfully added agent '{}'", name);
+        Ok(())
+    }
+
+    /// Remove an agent from the manager
+    pub async fn remove_agent(&self, name: &str) -> Result<()> {
+        let handle = {
+            let mut agents = self.agents.write().await;
+            agents
+                .remove(name)
+                .ok_or_else(|| anyhow!("Agent '{}' not found", name))?
+        };
+
+        // Shutdown the agent
+        handle.shutdown().await?;
+        log::info!("Successfully removed agent '{}'", name);
+        Ok(())
+    }
+
+    /// Restart an agent with new configuration
+    pub async fn restart_agent(&self, name: &str, config: AgentProcessConfig) -> Result<()> {
+        // Remove old agent
+        let old_handle = {
+            let mut agents = self.agents.write().await;
+            agents
+                .remove(name)
+                .ok_or_else(|| anyhow!("Agent '{}' not found", name))?
+        };
+
+        // Shutdown old agent
+        if let Err(e) = old_handle.shutdown().await {
+            warn!("Failed to shutdown old agent '{}': {}", name, e);
+        }
+
+        // Spawn new agent
+        let new_handle = AgentHandle::spawn(
+            name.to_string(),
+            config,
+            self.permission_store.clone(),
+            self.session_bus.clone(),
+            self.permission_bus.clone(),
+        )
+        .await?;
+
+        // Add new agent to map
+        let mut agents = self.agents.write().await;
+        agents.insert(name.to_string(), Arc::new(new_handle));
+        log::info!("Successfully restarted agent '{}'", name);
+        Ok(())
     }
 }
 
@@ -155,6 +239,17 @@ impl AgentHandle {
             .map_err(|_| anyhow!("agent {} stopped", self.name))?;
         result
     }
+
+    /// Shutdown the agent gracefully
+    pub async fn shutdown(&self) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.sender
+            .send(AgentCommand::Shutdown { respond: tx })
+            .await
+            .map_err(|_| anyhow!("agent {} is not running", self.name))?;
+        rx.await
+            .map_err(|_| anyhow!("agent {} shutdown channel closed", self.name))?
+    }
 }
 
 enum AgentCommand {
@@ -169,6 +264,9 @@ enum AgentCommand {
     Prompt {
         request: acp::PromptRequest,
         respond: oneshot::Sender<Result<acp::PromptResponse>>,
+    },
+    Shutdown {
+        respond: oneshot::Sender<Result<()>>,
     },
 }
 
@@ -295,6 +393,11 @@ async fn agent_event_loop(
             AgentCommand::Prompt { request, respond } => {
                 let result = conn.prompt(request).await.map_err(|err| anyhow!(err));
                 let _ = respond.send(result);
+            }
+            AgentCommand::Shutdown { respond } => {
+                log::info!("Agent {} received shutdown command", agent_name);
+                let _ = respond.send(Ok(()));
+                break; // Exit the command loop to shutdown
             }
         }
     }

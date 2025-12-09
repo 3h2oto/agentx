@@ -52,10 +52,11 @@ fn main() {
             .await
             {
                 Ok(manager) => {
-                    println!("Loaded {} agents.", manager.list_agents().len());
+                    let agent_count = manager.list_agents().await.len();
+                    println!("Loaded {} agents.", agent_count);
 
                     // Set the first agent as active by default
-                    let active_agent: Option<String> = manager.list_agents().first().cloned();
+                    let active_agent: Option<String> = manager.list_agents().await.first().cloned();
 
                     if let Some(ref agent) = active_agent {
                         println!("Active agent set to: {}", agent);

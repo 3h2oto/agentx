@@ -5,8 +5,8 @@ use std::sync::Arc;
 use crate::{
     core::agent::{AgentManager, PermissionStore},
     core::event_bus::{
-        CodeSelectionBusContainer, PermissionBusContainer, SessionUpdateBusContainer,
-        WorkspaceUpdateBusContainer,
+        AgentConfigBusContainer, CodeSelectionBusContainer, PermissionBusContainer,
+        SessionUpdateBusContainer, WorkspaceUpdateBusContainer,
     },
     core::services::{AgentService, MessageService, PersistenceService, WorkspaceService},
 };
@@ -26,6 +26,7 @@ pub struct AppState {
     pub permission_bus: PermissionBusContainer,
     pub workspace_bus: WorkspaceUpdateBusContainer,
     pub code_selection_bus: CodeSelectionBusContainer,
+    pub agent_config_bus: AgentConfigBusContainer,
     /// Current welcome session - created when user selects an agent
     welcome_session: Option<WelcomeSession>,
     /// Service layer
@@ -67,6 +68,7 @@ impl AppState {
             code_selection_bus: Arc::new(std::sync::Mutex::new(
                 crate::core::event_bus::code_selection_bus::CodeSelectionBus::new(),
             )),
+            agent_config_bus: AgentConfigBusContainer::new(),
             welcome_session: None,
             agent_service: None,
             message_service: None,
@@ -87,10 +89,7 @@ impl AppState {
 
     /// Set the AgentManager after async initialization
     pub fn set_agent_manager(&mut self, manager: Arc<AgentManager>) {
-        log::info!(
-            "Setting AgentManager with {} agents",
-            manager.list_agents().len()
-        );
+        log::info!("Setting AgentManager");
 
         // Determine sessions directory path
         let sessions_dir = if cfg!(debug_assertions) {

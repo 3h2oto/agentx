@@ -538,16 +538,23 @@ impl DockWorkspace {
             log::info!("Published user message to session bus: {}", session_id);
 
             // Step 2: Get agent handle and send prompt
-            let agent_handle: Option<std::sync::Arc<crate::AgentHandle>> = cx
-                .update(|cx| {
-                    AppState::global(cx).agent_manager().and_then(|m| {
-                        // Get the first available agent
-                        let agents = m.list_agents();
-                        agents.first().and_then(|name| m.get(name))
-                    })
-                })
+            let agent_manager = cx
+                .update(|cx| AppState::global(cx).agent_manager().cloned())
                 .ok()
                 .flatten();
+
+            let agent_handle: Option<std::sync::Arc<crate::AgentHandle>> =
+                if let Some(manager) = agent_manager {
+                    // Get the first available agent
+                    let agents = manager.list_agents().await;
+                    if let Some(name) = agents.first() {
+                        manager.get(name).await
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
 
             if let Some(agent_handle) = agent_handle {
                 // Build prompt with text and images

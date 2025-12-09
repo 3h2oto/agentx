@@ -63,14 +63,15 @@ impl AgentService {
     // ========== Agent Operations ==========
 
     /// List all available agents
-    pub fn list_agents(&self) -> Vec<String> {
-        self.agent_manager.list_agents()
+    pub async fn list_agents(&self) -> Vec<String> {
+        self.agent_manager.list_agents().await
     }
 
     /// Get agent handle (internal use)
-    fn get_agent_handle(&self, name: &str) -> Result<Arc<AgentHandle>> {
+    async fn get_agent_handle(&self, name: &str) -> Result<Arc<AgentHandle>> {
         self.agent_manager
             .get(name)
+            .await
             .ok_or_else(|| anyhow!("Agent not found: {}", name))
     }
 
@@ -78,7 +79,7 @@ impl AgentService {
 
     /// Create a new session for the agent
     pub async fn create_session(&self, agent_name: &str) -> Result<String> {
-        let agent_handle = self.get_agent_handle(agent_name)?;
+        let agent_handle = self.get_agent_handle(agent_name).await?;
 
         let mut request = acp::NewSessionRequest::new(std::env::current_dir().unwrap_or_default());
         request.cwd = std::env::current_dir().unwrap_or_default();
@@ -183,7 +184,7 @@ impl AgentService {
         session_id: &str,
         prompt: Vec<acp::ContentBlock>,
     ) -> Result<PromptResponse> {
-        let agent_handle = self.get_agent_handle(agent_name)?;
+        let agent_handle = self.get_agent_handle(agent_name).await?;
         self.update_session_status(agent_name, session_id, SessionStatus::InProgress);
         let request = acp::PromptRequest::new(acp::SessionId::from(session_id.to_string()), prompt);
 
