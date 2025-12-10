@@ -265,6 +265,23 @@ enum AgentCommand {
         request: acp::PromptRequest,
         respond: oneshot::Sender<Result<acp::PromptResponse>>,
     },
+    LoadSession {
+        request: acp::LoadSessionRequest,
+        respond: oneshot::Sender<Result<acp::LoadSessionResponse>>,
+    },
+    #[cfg(feature = "unstable")]
+    SetSessionModel{
+        request: acp::SetSessionModelRequest,
+        respond: oneshot::Sender<Result<acp::SetSessionModelResponse>>,
+    },
+    SetSessionMode{
+        request: acp::SetSessionModeRequest,
+        respond: oneshot::Sender<Result<acp::SetSessionModeResponse>>,
+    },
+    Cancel {
+        request: acp::CancelNotification,
+        respond: oneshot::Sender<Result<()>>,
+    },
     Shutdown {
         respond: oneshot::Sender<Result<()>>,
     },
@@ -392,6 +409,23 @@ async fn agent_event_loop(
             }
             AgentCommand::Prompt { request, respond } => {
                 let result = conn.prompt(request).await.map_err(|err| anyhow!(err));
+                let _ = respond.send(result);
+            }
+            AgentCommand::Cancel { request, respond } => {
+                let result = conn.cancel(request).await.map_err(|err| anyhow!(err));
+                let _ = respond.send(result);
+            }
+            AgentCommand::LoadSession { request, respond } => {
+                let result = conn.load_session(request).await.map_err(|err| anyhow!(err));
+                let _ = respond.send(result);
+            },
+            AgentCommand::SetSessionMode { request, respond } => {
+                let result = conn.set_session_mode(request).await.map_err(|err| anyhow!(err));
+                let _ = respond.send(result);
+            }
+            #[cfg(feature = "unstable")]
+            AgentCommand::SetSessionModel { request, respond } => {
+                let result = conn.set_session_model(request).await.map_err(|err| anyhow!(err));
                 let _ = respond.send(result);
             }
             AgentCommand::Shutdown { respond } => {
