@@ -737,11 +737,11 @@ impl WelcomePanel {
 
 impl Render for WelcomePanel {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        log::debug!(
-            "[WelcomePanel::render] Rendering with {} code_selections and {} pasted_images",
-            self.code_selections.len(),
-            self.pasted_images.len()
-        );
+        // log::debug!(
+        //     "[WelcomePanel::render] Rendering with {} code_selections and {} pasted_images",
+        //     self.code_selections.len(),
+        //     self.pasted_images.len()
+        // );
 
         v_flex()
             .size_full()

@@ -389,7 +389,6 @@ impl Render for DockWorkspace {
             .on_action(cx.listener(Self::on_action_send_message_to_session))
             .on_action(cx.listener(Self::on_action_cancel_session))
             .on_action(cx.listener(Self::on_action_open))
-            .on_action(cx.listener(Self::paste))
             .relative()
             .size_full()
             .flex()

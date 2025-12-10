@@ -199,22 +199,22 @@ impl ChatInputBox {
 
 impl RenderOnce for ChatInputBox {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
-        log::debug!(
-            "[ChatInputBox::render] Rendering with {} code_selections and {} pasted_images",
-            self.code_selections.len(),
-            self.pasted_images.len()
-        );
+        // log::debug!(
+        //     "[ChatInputBox::render] Rendering with {} code_selections and {} pasted_images",
+        //     self.code_selections.len(),
+        //     self.pasted_images.len()
+        // );
 
         // Log code selections details
-        for (idx, selection) in self.code_selections.iter().enumerate() {
-            log::debug!(
-                "[ChatInputBox::render] Code selection {}: {}:{}~{}",
-                idx,
-                selection.file_path,
-                selection.start_line,
-                selection.end_line
-            );
-        }
+        // for (idx, selection) in self.code_selections.iter().enumerate() {
+        //     log::debug!(
+        //         "[ChatInputBox::render] Code selection {}: {}:{}~{}",
+        //         idx,
+        //         selection.file_path,
+        //         selection.start_line,
+        //         selection.end_line
+        //     );
+        // }
 
         let theme = cx.theme();
         let on_send = self.on_send;
