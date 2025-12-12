@@ -515,9 +515,9 @@ impl RenderOnce for ChatInputBox {
                                 // Handle button click
                                 if is_in_progress {
                                     // When in progress, dispatch CancelSession action
-                                    if let Some(session_id) = self.session_id {
+                                    if let Some(session_id) = self.session_id.clone() {
                                         btn = btn.on_click(move |_ev, window, cx| {
-                                            log::info!("Dispatching CancelSession action for session: {}", session_id);
+                                            log::info!("ChatInputBox: Dispatching CancelSession action for session: {}", session_id);
                                             window.dispatch_action(
                                                 Box::new(CancelSession {
                                                     session_id: session_id.clone(),
@@ -525,6 +525,8 @@ impl RenderOnce for ChatInputBox {
                                                 cx,
                                             );
                                         });
+                                    } else {
+                                        log::warn!("ChatInputBox: Cannot cancel - session_id is None");
                                     }
                                 } else if let Some(handler) = on_send {
                                     // Normal send behavior

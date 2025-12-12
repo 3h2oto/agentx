@@ -141,19 +141,40 @@ impl AgentService {
 
     /// Cancel an ongoing session operation
     pub async fn cancel_session(&self, agent_name: &str, session_id: &str) -> Result<()> {
+        log::info!("AgentService: cancel_session called for agent={}, session={}", agent_name, session_id);
+
         // Get the agent handle
         let agent_handle = self.get_agent_handle(agent_name).await?;
+        log::info!("AgentService: Got agent handle for {}", agent_name);
 
         // Send cancel request to the agent
         agent_handle.cancel(session_id.to_string()).await?;
+        log::info!("AgentService: Sent cancel request to agent");
 
         // Update session status to Idle
         let mut sessions = self.sessions.write().unwrap();
         if let Some(agent_sessions) = sessions.get_mut(agent_name) {
             if let Some(info) = agent_sessions.get_mut(session_id) {
                 info.status = SessionStatus::Idle;
-                log::info!("Cancelled session {} for agent {}", session_id, agent_name);
+                log::info!("AgentService: Updated session status to Idle for {} (agent: {})", session_id, agent_name);
+
+                // Publish status update to workspace bus
+                if let Some(ref workspace_bus) = self.workspace_bus {
+                    let event = WorkspaceUpdateEvent::SessionStatusUpdated {
+                        session_id: session_id.to_string(),
+                        agent_name: agent_name.to_string(),
+                        status: SessionStatus::Idle,
+                        last_active: info.last_active,
+                        message_count: 0,
+                    };
+                    workspace_bus.lock().unwrap().publish(event);
+                    log::info!("AgentService: Published session status update to workspace bus");
+                }
+            } else {
+                log::warn!("AgentService: Session {} not found in agent {}", session_id, agent_name);
             }
+        } else {
+            log::warn!("AgentService: No sessions found for agent {}", agent_name);
         }
 
         Ok(())
