@@ -231,37 +231,79 @@ impl TaskPanel {
         .detach();
     }
 
-    fn subscribe_to_workspace_updates(_entity: &Entity<Self>, cx: &mut App) {
+    fn subscribe_to_workspace_updates(entity: &Entity<Self>, cx: &mut App) {
         let workspace_bus = AppState::global(cx).workspace_bus.clone();
+        let workspace_service = match AppState::global(cx).workspace_service() {
+            Some(service) => service.clone(),
+            None => {
+                log::warn!("WorkspaceService not available for subscription");
+                return;
+            }
+        };
 
+        let entity_weak = entity.downgrade();
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+
+        // Subscribe to workspace bus
         workspace_bus
             .lock()
             .unwrap()
-            .subscribe(move |event| match event {
-                WorkspaceUpdateEvent::WorkspaceAdded { workspace_id } => {
-                    log::debug!("TaskPanel received WorkspaceAdded: {}", workspace_id);
-                }
-                WorkspaceUpdateEvent::WorkspaceRemoved { workspace_id } => {
-                    log::debug!("TaskPanel received WorkspaceRemoved: {}", workspace_id);
-                }
-                WorkspaceUpdateEvent::TaskCreated {
-                    workspace_id,
-                    task_id,
-                } => {
-                    log::debug!(
-                        "TaskPanel received TaskCreated: {} in {}",
-                        task_id,
-                        workspace_id
-                    );
-                }
-                WorkspaceUpdateEvent::TaskUpdated { task_id } => {
-                    log::debug!("TaskPanel received TaskUpdated: {}", task_id);
-                }
-                WorkspaceUpdateEvent::SessionStatusUpdated { session_id, .. } => {
-                    log::debug!("TaskPanel received SessionStatusUpdated: {}", session_id);
-                    // TaskPanel doesn't need to react to session status updates
-                }
+            .subscribe(move |event| {
+                let _ = tx.send(event.clone());
             });
+
+        // Spawn task to process events and update UI
+        cx.spawn(async move |mut cx| {
+            while let Some(event) = rx.recv().await {
+                match event {
+                    WorkspaceUpdateEvent::WorkspaceAdded { workspace_id } => {
+                        log::debug!("TaskPanel received WorkspaceAdded: {}", workspace_id);
+                        if let Some(entity) = entity_weak.upgrade() {
+                            cx.update(|cx| {
+                                Self::load_workspace_data(&entity, workspace_service.clone(), cx);
+                            }).ok();
+                        }
+                    }
+                    WorkspaceUpdateEvent::WorkspaceRemoved { workspace_id } => {
+                        log::debug!("TaskPanel received WorkspaceRemoved: {}", workspace_id);
+                        if let Some(entity) = entity_weak.upgrade() {
+                            cx.update(|cx| {
+                                Self::load_workspace_data(&entity, workspace_service.clone(), cx);
+                            }).ok();
+                        }
+                    }
+                    WorkspaceUpdateEvent::TaskCreated {
+                        workspace_id,
+                        task_id,
+                    } => {
+                        log::debug!(
+                            "TaskPanel received TaskCreated: {} in {}",
+                            task_id,
+                            workspace_id
+                        );
+                        // Reload workspace data to include the new task
+                        if let Some(entity) = entity_weak.upgrade() {
+                            cx.update(|cx| {
+                                Self::load_workspace_data(&entity, workspace_service.clone(), cx);
+                            }).ok();
+                        }
+                    }
+                    WorkspaceUpdateEvent::TaskUpdated { task_id } => {
+                        log::debug!("TaskPanel received TaskUpdated: {}", task_id);
+                        if let Some(entity) = entity_weak.upgrade() {
+                            cx.update(|cx| {
+                                Self::load_workspace_data(&entity, workspace_service.clone(), cx);
+                            }).ok();
+                        }
+                    }
+                    WorkspaceUpdateEvent::SessionStatusUpdated { session_id, .. } => {
+                        log::debug!("TaskPanel received SessionStatusUpdated: {}", session_id);
+                        // TaskPanel doesn't need to react to session status updates
+                    }
+                }
+            }
+        })
+        .detach();
     }
 
     fn select_first_task(&mut self) {
