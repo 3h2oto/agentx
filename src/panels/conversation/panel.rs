@@ -12,7 +12,7 @@ use chrono::{DateTime, Utc};
 
 use crate::{
     app::actions::AddCodeSelection, core::services::SessionStatus, panels::dock_panel::DockPanel,
-    AgentMessage, AgentTodoList, AppState, ChatInputBox, SendMessageToSession,
+    AgentMessage, AgentTodoList, AppState, CancelSession, ChatInputBox, SendMessageToSession,
 };
 
 // Import from submodules
@@ -260,7 +260,7 @@ impl ConversationPanel {
                         entity.update(cx, |this, cx| {
                             let index = this.next_index;
                             this.next_index += 1;
-                            log::info!("Processing update type: {:?}", update);
+                            // log::debug!("Processing update type: {:?}", update);
                             Self::add_update_to_list(&mut this.rendered_items, update, index, cx);
 
                             cx.notify(); // Trigger re-render immediately
@@ -871,6 +871,31 @@ impl ConversationPanel {
         window.dispatch_action(Box::new(action), cx);
     }
 
+    /// Send a message to the current session
+    /// Dispatches SendMessageToSession action to workspace for handling
+    fn send_cancel_message(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        // Only send if we have a session_id
+        let Some(ref session_id) = self.session_id else {
+            log::warn!("Cannot send message: no session_id");
+            return;
+        };
+
+        log::info!(
+            "ConversationPanel: Dispatching CancelSession action for session: {}",
+            session_id
+        );
+
+        let action = CancelSession {
+            session_id: session_id.clone(),
+        };
+
+        window.dispatch_action(Box::new(action), cx);
+    }
+
     /// Render the status bar at the bottom of the conversation panel
     fn render_status_bar(&self, cx: &mut Context<Self>) -> Option<impl IntoElement> {
         let status_info = self.session_status.as_ref()?;
@@ -1188,6 +1213,10 @@ impl Render for ConversationPanel {
                                     this.code_selections.clear();
                                     cx.notify();
                                 }
+                            }))
+                            .on_cancel(cx.listener(|this, _ev, window, cx| {
+                                this.send_cancel_message(window, cx);
+                                cx.notify();
                             }))
                     }),
             )

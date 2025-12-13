@@ -16,7 +16,7 @@ use gpui_component::{
 
 use agent_client_protocol::ImageContent;
 
-use crate::app::actions::{AddCodeSelection, CancelSession};
+use crate::app::actions::AddCodeSelection;
 use crate::core::services::SessionStatus;
 
 /// A reusable chat input component with context controls and send button.
@@ -34,6 +34,7 @@ pub struct ChatInputBox {
     input_state: Entity<InputState>,
     title: Option<String>,
     on_send: Option<Box<dyn Fn(&gpui::ClickEvent, &mut Window, &mut App) + 'static>>,
+    on_cancel: Option<Box<dyn Fn(&gpui::ClickEvent, &mut Window, &mut App) + 'static>>,
     context_list: Option<AnyElement>,
     context_list_focus: Option<gpui::FocusHandle>,
     context_popover_open: bool,
@@ -59,6 +60,7 @@ impl ChatInputBox {
             input_state,
             title: None,
             on_send: None,
+            on_cancel: None,
             context_list: None,
             context_list_focus: None,
             context_popover_open: false,
@@ -89,6 +91,15 @@ impl ChatInputBox {
         F: Fn(&gpui::ClickEvent, &mut Window, &mut App) + 'static,
     {
         self.on_send = Some(Box::new(callback));
+        self
+    }
+
+    /// Set a callback for when the cancel button is clicked (when session is in progress)
+    pub fn on_cancel<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(&gpui::ClickEvent, &mut Window, &mut App) + 'static,
+    {
+        self.on_cancel = Some(Box::new(callback));
         self
     }
 
@@ -218,6 +229,7 @@ impl RenderOnce for ChatInputBox {
 
         let theme = cx.theme();
         let on_send = self.on_send;
+        let on_cancel = self.on_cancel;
         let on_new_session = self.on_new_session;
         let on_paste_callback = self.on_paste.clone();
         let input_state_for_paste = self.input_state.clone();
@@ -514,19 +526,14 @@ impl RenderOnce for ChatInputBox {
 
                                 // Handle button click
                                 if is_in_progress {
-                                    // When in progress, dispatch CancelSession action
-                                    if let Some(session_id) = self.session_id.clone() {
-                                        btn = btn.on_click(move |_ev, window, cx| {
-                                            log::info!("ChatInputBox: Dispatching CancelSession action for session: {}", session_id);
-                                            window.dispatch_action(
-                                                Box::new(CancelSession {
-                                                    session_id: session_id.clone(),
-                                                }),
-                                                cx,
-                                            );
+                                    // When in progress, call the on_cancel callback
+                                    if let Some(on_cancel_handler) = on_cancel {
+                                        btn = btn.on_click(move |ev, window, cx| {
+                                            log::info!("ChatInputBox: Cancel button clicked for session");
+                                            on_cancel_handler(ev, window, cx);
                                         });
                                     } else {
-                                        log::warn!("ChatInputBox: Cannot cancel - session_id is None");
+                                        log::warn!("ChatInputBox: Cannot cancel - on_cancel handler not set");
                                     }
                                 } else if let Some(handler) = on_send {
                                     // Normal send behavior
