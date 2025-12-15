@@ -1,17 +1,18 @@
 use gpui::{
-    div, prelude::FluentBuilder, px, AnyElement, App, ElementId, Entity, Focusable,
-    InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window,
+    AnyElement, App, ElementId, Entity, Focusable, InteractiveElement, IntoElement, ParentElement,
+    RenderOnce, Styled, Window, div, prelude::FluentBuilder, px,
 };
 use std::rc::Rc;
 
 use gpui_component::{
+    ActiveTheme, Disableable, Icon, IconName, Sizable,
     button::{Button, ButtonCustomVariant, ButtonVariants},
     h_flex,
     input::{Input, InputState},
     list::{List, ListDelegate, ListState},
     popover::Popover,
     select::{Select, SelectState},
-    v_flex, ActiveTheme, Disableable, Icon, IconName, Sizable,
+    v_flex,
 };
 
 use agent_client_protocol::ImageContent;
@@ -48,8 +49,8 @@ pub struct ChatInputBox {
     on_remove_image: Option<Rc<dyn Fn(&usize, &mut Window, &mut App) + 'static>>,
     on_remove_code_selection: Option<Rc<dyn Fn(&usize, &mut Window, &mut App) + 'static>>,
     on_paste: Option<Rc<dyn Fn(&mut Window, &mut App) + 'static>>,
-    session_status: Option<SessionStatus>,      // Session status for button state
-    session_id: Option<String>,                 // Session ID for cancel action
+    session_status: Option<SessionStatus>, // Session status for button state
+    session_id: Option<String>,            // Session ID for cancel action
 }
 
 impl ChatInputBox {
@@ -485,16 +486,16 @@ impl RenderOnce for ChatInputBox {
                             )
                             .child({
                                 // Determine button icon and color based on session status
-                                let (icon, is_in_progress) = match self.session_status {
+                                let (btn, is_in_progress) = match self.session_status {
                                     Some(SessionStatus::InProgress) => {
-                                        (Icon::new(crate::assets::Icon::SquarePause), true)
+                                        ( Button::new("cancel")
+                                    .icon(Icon::new(crate::assets::Icon::SquarePause)), true)
                                     },
-                                    _ => (Icon::new(IconName::ArrowUp), false),
+                                    _ => ( Button::new("send")
+                                    .icon(Icon::new(IconName::ArrowUp)), false),
                                 };
 
-                                let mut btn = Button::new("send")
-                                    .icon(icon)
-                                    .rounded_full()
+                                let mut btn = btn.rounded_full()
                                     .small()
                                     .disabled(is_empty && !is_in_progress);
 

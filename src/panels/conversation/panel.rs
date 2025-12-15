@@ -880,12 +880,12 @@ impl ConversationPanel {
     ) {
         // Only send if we have a session_id
         let Some(ref session_id) = self.session_id else {
-            log::warn!("Cannot send message: no session_id");
+            log::warn!("Cannot cancel session: no session_id");
             return;
         };
 
         log::info!(
-            "ConversationPanel: Dispatching CancelSession action for session: {}",
+            "[ConversationPanel] BEFORE dispatch_action: CancelSession for session: {}",
             session_id
         );
 
@@ -894,6 +894,11 @@ impl ConversationPanel {
         };
 
         window.dispatch_action(Box::new(action), cx);
+
+        log::info!(
+            "[ConversationPanel] AFTER dispatch_action: CancelSession for session: {}",
+            session_id
+        );
     }
 
     /// Render the status bar at the bottom of the conversation panel
@@ -1065,7 +1070,7 @@ impl Focusable for ConversationPanel {
 
 impl Render for ConversationPanel {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut children = v_flex().p_4().gap_6().bg(cx.theme().background);
+        let mut children = v_flex().p_4().gap_3().bg(cx.theme().background);
 
         for item in &self.rendered_items {
             match item {
@@ -1146,6 +1151,7 @@ impl Render for ConversationPanel {
         // Main layout: vertical flex with scroll area on top and input box at bottom
         v_flex()
             .size_full()
+            .track_focus(&self.focus_handle) // CRITICAL: Track focus to enable action propagation
             .child(
                 // Scrollable message area - takes remaining space
                 div()
@@ -1215,6 +1221,7 @@ impl Render for ConversationPanel {
                                 }
                             }))
                             .on_cancel(cx.listener(|this, _ev, window, cx| {
+                                log::info!("[ConversationPanel] on_cancel callback triggered");
                                 this.send_cancel_message(window, cx);
                                 cx.notify();
                             }))
