@@ -1165,8 +1165,27 @@ impl Render for ConversationPanel {
                     .overflow_y_scroll()
                     .overflow_y_scrollbar()
                     // .track_scroll(&self.scroll_handle)
-                    .pb_3() // Add padding at bottom so messages don't get hidden behind input box
-                    .child(children),
+                    .when(self.rendered_items.is_empty(), |this| {
+                        // Show empty state with centered text
+                        this.child(
+                            div()
+                                .size_full()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(
+                                    div()
+                                        .text_color(cx.theme().muted_foreground)
+                                        .text_sm()
+                                        .child("暂无消息"),
+                                ),
+                        )
+                    })
+                    .when(!self.rendered_items.is_empty(), |this| {
+                        // Show message list
+                        this.pb_3() // Add padding at bottom so messages don't get hidden behind input box
+                            .child(children)
+                    }),
             )
             .when_some(self.render_status_bar(cx), |this, status_bar| {
                 this.child(status_bar)
