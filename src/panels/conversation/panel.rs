@@ -91,12 +91,12 @@ impl ConversationPanel {
                 .soft_wrap(true)
                 .placeholder("Type a message...")
         });
-        let session_updates = Self::load_mock_data();
+        // let session_updates = Self::load_mock_data();
 
-        let mut rendered_items = Vec::new();
-        for (index, update) in session_updates.into_iter().enumerate() {
-            Self::add_update_to_list(&mut rendered_items, update, index, cx);
-        }
+        let rendered_items = Vec::new();
+        // for (index, update) in session_updates.into_iter().enumerate() {
+        //     Self::add_update_to_list(&mut rendered_items, update, index, cx);
+        // }
 
         let next_index = rendered_items.len();
 
@@ -725,24 +725,6 @@ impl ConversationPanel {
                     update_type,
                     update
                 );
-            }
-        }
-    }
-
-    /// Load mock session updates from JSON file
-    fn load_mock_data() -> Vec<SessionUpdate> {
-        let json_str = include_str!("../../../mock_conversation_acp.json");
-        match serde_json::from_str::<Vec<SessionUpdate>>(json_str) {
-            Ok(updates) => {
-                log::info!(
-                    "✅ Successfully loaded {} mock conversation updates",
-                    updates.len()
-                );
-                updates
-            }
-            Err(e) => {
-                log::error!("❌ Failed to load mock conversation data: {}", e);
-                Vec::new()
             }
         }
     }
