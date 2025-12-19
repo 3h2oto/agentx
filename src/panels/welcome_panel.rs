@@ -39,6 +39,8 @@ pub struct WelcomePanel {
     pasted_images: Vec<(ImageContent, String)>,
     code_selections: Vec<AddCodeSelection>,
     selected_files: Vec<String>,
+    at_mention_active: bool,  // Track if @ mention is active
+    pending_at_mention: Option<String>,  // Pending @filename to insert
     _subscriptions: Vec<Subscription>,
 }
 
@@ -128,6 +130,17 @@ impl WelcomePanel {
 
         // Subscribe to agent_select focus to refresh agents list when no agents available
         entity.update(cx, |this, cx| {
+            // Subscribe to input changes to detect @ symbol
+            let input_subscription = cx.subscribe(
+                &this.input_state,
+                |this, _input, event: &gpui_component::input::InputEvent, cx| {
+                    if let gpui_component::input::InputEvent::Change = event {
+                        this.on_input_change(cx);
+                    }
+                },
+            );
+            this._subscriptions.push(input_subscription);
+
             let agent_select_focus = this.agent_select.focus_handle(cx);
             let subscription = cx.on_focus(
                 &agent_select_focus,
@@ -161,16 +174,27 @@ impl WelcomePanel {
         // Listen for file selection events
         {
             let weak_entity = entity.downgrade();
+
             cx.spawn(async move |cx| {
                 while let Some(file_item) = file_rx.recv().await {
                     if let Some(entity) = weak_entity.upgrade() {
                         let file_path = file_item.path.to_string_lossy().to_string();
+                        let filename = file_item.name.clone();
+
                         _ = cx.update(|cx| {
                             entity.update(cx, |this, cx| {
-                                // Add file to selected_files if not already present
-                                if !this.selected_files.contains(&file_path) {
-                                    this.selected_files.push(file_path);
+                                // Check if @ mention is active
+                                if this.at_mention_active {
+                                    // Store the filename to insert
+                                    this.pending_at_mention = Some(filename.clone());
+                                    this.at_mention_active = false;
+                                } else {
+                                    // Add to selected_files if not already present
+                                    if !this.selected_files.contains(&file_path) {
+                                        this.selected_files.push(file_path);
+                                    }
                                 }
+
                                 // Close the popover
                                 this.context_popover_open = false;
                                 cx.notify();
@@ -292,6 +316,8 @@ impl WelcomePanel {
             pasted_images: Vec::new(),
             code_selections: Vec::new(),
             selected_files: Vec::new(),
+            at_mention_active: false,
+            pending_at_mention: None,
             _subscriptions: Vec::new(),
         };
 
@@ -443,6 +469,22 @@ impl WelcomePanel {
                 selected_session.session_id,
                 agent_name
             );
+        }
+    }
+
+    /// Handle input change - detect @ symbol to open file picker
+    fn on_input_change(&mut self, cx: &mut Context<Self>) {
+        let value = self.input_state.read(cx).value();
+
+        // Check if the last character is @
+        if value.ends_with('@') {
+            // Open the context popover
+            self.context_popover_open = true;
+            self.at_mention_active = true;
+            cx.notify();
+        } else if self.at_mention_active && !value.contains('@') {
+            // @ was removed, deactivate mention mode
+            self.at_mention_active = false;
         }
     }
 
@@ -696,12 +738,22 @@ impl WelcomePanel {
 }
 
 impl Render for WelcomePanel {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // log::debug!(
         //     "[WelcomePanel::render] Rendering with {} code_selections and {} pasted_images",
         //     self.code_selections.len(),
         //     self.pasted_images.len()
         // );
+
+        // Process pending @ mention
+        if let Some(filename) = self.pending_at_mention.take() {
+            let current_value = self.input_state.read(cx).value();
+            let new_value = format!("{}@{} ", current_value.trim_end_matches('@'), filename);
+
+            self.input_state.update(cx, |state, cx| {
+                state.set_value(&new_value, window, cx);
+            });
+        }
 
         v_flex()
             .size_full()
