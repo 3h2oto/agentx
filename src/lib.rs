@@ -4,6 +4,7 @@ mod components;
 mod core;
 mod i18n;
 mod panels;
+mod reqwest_client;
 mod schemas;
 mod utils;
 pub mod workspace;

@@ -40,10 +40,12 @@ A full-featured desktop application built with [GPUI Component](https://github.c
 
 ### Installation
 
+This is a **standalone project** that can be built independently:
+
 ```bash
 # Clone the repository
-git clone https://github.com/sxhxliang/gpui-component.git
-cd gpui-component/examples/agentx
+git clone <your-agentx-repository-url>
+cd agentx
 
 # Run the application
 cargo run
@@ -63,10 +65,9 @@ cargo build --release
 
 # Check for compilation errors
 cargo check
-
-# Run from workspace root
-cd ../.. && cargo run --example agentx
 ```
+
+**Note**: This project uses Git dependencies for GPUI and gpui-component. The first build may take some time as Cargo fetches and compiles dependencies.
 
 ## 📖 Usage
 
@@ -306,19 +307,26 @@ See [CLAUDE.md](CLAUDE.md) for detailed development guidelines.
 
 ## 📦 Dependencies
 
+This is a **standalone project** with Git-based dependencies.
+
 ### Core Framework
-- **gpui** `0.2.2` - Core GPUI framework for UI rendering
-- **gpui-component** - UI component library (workspace member)
-- **gpui-component-assets** - Asset integration
+- **gpui** - Core GPUI framework from [Zed Industries](https://github.com/zed-industries/zed) (Git dependency)
+- **gpui-component** `0.5.0` - UI component library from [LongBridge](https://github.com/longbridge/gpui-component) (Git dependency)
 
 ### Agent Communication
-- **agent-client-protocol** `0.8.0` - ACP protocol implementation
+- **agent-client-protocol** `0.9.0` - ACP protocol implementation
 - **tokio** `1.48.0` - Async runtime for agent processes
 - **tokio-util** `0.7.17` - Tokio utilities
 
+### HTTP Client (Embedded)
+- **reqwest** - Zed's custom reqwest fork (Git dependency)
+- **rustls** `0.23.26` - TLS implementation
+- **rustls-platform-verifier** `0.5.0` - Platform certificate verification
+- **bytes**, **futures** - Async I/O utilities
+
 ### Language Support
 - **tree-sitter-navi** `0.2.2` - Syntax highlighting
-- **lsp-types** - Language Server Protocol types
+- **lsp-types** `0.97.0` - Language Server Protocol types
 - **color-lsp** `0.2.0` - LSP for color support
 
 ### Utilities
@@ -326,6 +334,8 @@ See [CLAUDE.md](CLAUDE.md) for detailed development guidelines.
 - **uuid** `1.11` - Unique identifier generation
 - **chrono** `0.4` - Date/time handling
 - **tracing**, **tracing-subscriber** - Logging
+- **rfd** `0.15` - Native file dialogs
+- **image** `0.25` - Image processing
 
 See [Cargo.toml](Cargo.toml) for complete dependency list.
 
@@ -367,6 +377,8 @@ git push origin feature/my-feature
 ## 📝 Documentation
 
 - **[CLAUDE.md](CLAUDE.md)** - Comprehensive development guide for Claude Code
+- **[GPUI Component](https://github.com/longbridge/gpui-component)** - Official GPUI Component repository
+- **[GPUI Documentation](https://www.gpui.rs/)** - GPUI framework documentation
 - **[Workspace Documentation](../../README.md)** - GPUI Component workspace overview
 - **[Component Gallery](../../crates/story/README.md)** - UI component examples
 
@@ -395,20 +407,21 @@ RUST_LOG=debug cargo run 2>&1 | tee debug.log
 
 ## 📄 License
 
-This project is licensed under the **MIT License**. See [LICENSE](../../LICENSE) for details.
+This project is licensed under the **Apache-2.0 License**. See LICENSE file for details.
 
 ## 🙏 Acknowledgments
 
-- **[GPUI](https://www.gpui.rs/)** - Zed's native GPU-accelerated UI framework
+- **[GPUI](https://www.gpui.rs/)** - Zed's native GPU-accelerated UI framework from [Zed Industries](https://github.com/zed-industries/zed)
+- **[gpui-component](https://github.com/longbridge/gpui-component)** - UI component library from [LongBridge](https://github.com/longbridge/gpui-component)
 - **[Zed](https://zed.dev/)** - Inspiration for editor features and architecture
 - **Agent Client Protocol** - Standard protocol for agent communication
 
 ## 🔗 Links
 
-- **Repository**: [github.com/sxhxliang/gpui-component](https://github.com/sxhxliang/gpui-component)
-- **Issues**: [github.com/sxhxliang/gpui-component/issues](https://github.com/sxhxliang/gpui-component/issues)
-- **GPUI Component Docs**: [gpui-component documentation](https://github.com/sxhxliang/gpui-component)
+- **GPUI Component**: [github.com/longbridge/gpui-component](https://github.com/longbridge/gpui-component)
+- **GPUI Framework**: [Zed Industries](https://github.com/zed-industries/zed)
+- **Agent Client Protocol**: [crates.io/crates/agent-client-protocol](https://crates.io/crates/agent-client-protocol)
 
 ---
 
-**Built with ❤️ using [GPUI Component](https://github.com/sxhxliang/gpui-component)**
+**Built with ❤️ using [GPUI](https://www.gpui.rs/) and [GPUI Component](https://github.com/longbridge/gpui-component)**
