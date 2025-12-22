@@ -264,7 +264,7 @@ impl RenderOnce for ChatInputBox {
             .icon(Icon::new(IconName::Asterisk))
             .ghost()
             .small();
-        
+
         let context_element = if let Some(context_list) = self.context_list {
             let on_change = self.on_context_popover_change;
             let mut popover = Popover::new("context-popover")

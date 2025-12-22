@@ -57,7 +57,7 @@ pub use title_bar::AppTitleBar;
 pub use components::{
     AgentMessage, AgentMessageData, AgentMessageMeta, AgentMessageView, AgentTodoList,
     AgentTodoListView, ChatInputBox, PermissionRequest, PermissionRequestView, PlanMeta,
-    ToolCallItem, ToolCallItemView, UserMessage, UserMessageData, UserMessageView,
+    StatusIndicator, ToolCallItem, ToolCallItemView, UserMessage, UserMessageData, UserMessageView,
 };
 
 // Re-export ACP types for convenience

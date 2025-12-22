@@ -264,8 +264,13 @@ impl MessageService {
     ///
     /// Returns the list of available commands (slash commands, etc.) for a given session.
     /// Returns None if the session or agent is not found.
-    pub fn get_session_commands(&self, agent_name: &str, session_id: &str) -> Option<Vec<AvailableCommand>> {
-        self.agent_service.get_session_commands(agent_name, session_id)
+    pub fn get_session_commands(
+        &self,
+        agent_name: &str,
+        session_id: &str,
+    ) -> Option<Vec<AvailableCommand>> {
+        self.agent_service
+            .get_session_commands(agent_name, session_id)
     }
 
     /// Get available commands for a session by session_id only
@@ -274,6 +279,7 @@ impl MessageService {
     /// Returns None if the session is not found.
     pub fn get_commands_by_session_id(&self, session_id: &str) -> Option<Vec<AvailableCommand>> {
         let agent_name = self.agent_service.get_agent_for_session(session_id)?;
-        self.agent_service.get_session_commands(&agent_name, session_id)
+        self.agent_service
+            .get_session_commands(&agent_name, session_id)
     }
 }

@@ -11,6 +11,8 @@ use gpui_component::{
     h_flex, v_flex,
 };
 
+use crate::components::StatusIndicator;
+use crate::core::services::SessionStatus;
 use crate::panels::conversation::types::{ToolCallStatusExt, ToolKindExt};
 
 /// Helper to extract text from ToolCallContent
@@ -82,6 +84,17 @@ impl ToolCallItem {
     fn has_content(&self) -> bool {
         !self.tool_call.content.is_empty()
     }
+
+    /// Convert ToolCallStatus to SessionStatus for StatusIndicator
+    fn status_to_session_status(&self) -> SessionStatus {
+        match self.tool_call.status {
+            ToolCallStatus::Pending => SessionStatus::Pending,
+            ToolCallStatus::InProgress => SessionStatus::InProgress,
+            ToolCallStatus::Completed => SessionStatus::Completed,
+            ToolCallStatus::Failed => SessionStatus::Failed,
+            _ => SessionStatus::Idle,
+        }
+    }
 }
 
 impl Render for ToolCallItem {
@@ -104,18 +117,11 @@ impl Render for ToolCallItem {
             // Header - always visible
             .child(
                 h_flex()
-                    .items_center()
-                    .gap_3()
-                    .p_2()
-                    .rounded(cx.theme().radius)
-                    .bg(cx.theme().secondary)
+                    .items_start()
+                    .gap_2()
                     .child(
                         // Kind icon
-                        self.tool_call
-                            .kind
-                            .icon()
-                            .size(px(16.))
-                            .text_color(cx.theme().muted_foreground),
+                        StatusIndicator::new(self.status_to_session_status()).size(12.0),
                     )
                     .child(
                         // Title

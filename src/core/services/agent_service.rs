@@ -270,7 +270,11 @@ impl AgentService {
     }
 
     /// Get available commands for a session
-    pub fn get_session_commands(&self, agent_name: &str, session_id: &str) -> Option<Vec<AvailableCommand>> {
+    pub fn get_session_commands(
+        &self,
+        agent_name: &str,
+        session_id: &str,
+    ) -> Option<Vec<AvailableCommand>> {
         self.sessions
             .read()
             .unwrap()

@@ -26,7 +26,7 @@ use crate::core::services::WorkspaceService;
 use crate::core::{event_bus::WorkspaceUpdateEvent, services::SessionStatus};
 use crate::panels::dock_panel::DockPanel;
 use crate::schemas::workspace_schema::WorkspaceTask;
-use crate::{AppState, ShowConversationPanel, ShowWelcomePanel, utils};
+use crate::{AppState, ShowConversationPanel, ShowWelcomePanel, StatusIndicator, utils};
 
 // ============================================================================
 // Constants - Layout spacing
@@ -911,11 +911,7 @@ impl TaskPanel {
                             .items_center()
                             .min_w_0()
                             .flex_1()
-                            .child(
-                                Icon::new(self.status_icon(&task.status))
-                                    .size_4()
-                                    .text_color(self.status_color(&task.status)),
-                            )
+                            .child(StatusIndicator::new(task.status.clone()).size(8.0))
                             .child(
                                 div()
                                     .text_sm()
@@ -1127,11 +1123,7 @@ impl TaskPanel {
                             .flex_1()
                             .text_xs()
                             .text_color(theme.muted_foreground)
-                            .child(
-                                Icon::new(self.status_icon(&task.status))
-                                    .size_3()
-                                    .text_color(self.status_color(&task.status)),
-                            )
+                            .child(StatusIndicator::new(task.status.clone()).size(6.0))
                             .child(
                                 div()
                                     .overflow_x_hidden()

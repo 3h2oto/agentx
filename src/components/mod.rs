@@ -4,6 +4,7 @@ mod agent_todo_list;
 mod chat_input_box;
 mod file_picker;
 mod permission_request;
+mod status_indicator;
 // mod task_list_item;
 mod tool_call_item;
 mod user_message;
@@ -23,3 +24,5 @@ pub use tool_call_item::{ToolCallItem, ToolCallItemView};
 pub use user_message::{UserMessage, UserMessageData, UserMessageView};
 
 pub use permission_request::{PermissionRequest, PermissionRequestView};
+
+pub use status_indicator::StatusIndicator;

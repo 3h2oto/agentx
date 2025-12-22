@@ -3,7 +3,10 @@ use gpui::{
     Render, ScrollHandle, SharedString, Styled, Window, div, prelude::*, px,
 };
 use gpui_component::{
-    ActiveTheme, Icon, IconName, h_flex, input::InputState, scroll::{ScrollableElement, ScrollbarAxis}, v_flex,
+    ActiveTheme, Icon, IconName, h_flex,
+    input::InputState,
+    scroll::{ScrollableElement, ScrollbarAxis},
+    v_flex,
 };
 
 // Use the published ACP schema crate
@@ -190,7 +193,6 @@ impl ConversationPanel {
                                 // Scroll to bottom after loading history
                                 this.scroll_handle.scroll_to_bottom();
                                 cx.notify(); // Trigger re-render
-
                             });
                         } else {
                             log::warn!("Entity dropped while loading history");
@@ -251,7 +253,7 @@ impl ConversationPanel {
                             this.next_index += 1;
                             // log::debug!("Processing update type: {:?}", update);
                             Self::add_update_to_list(&mut this.rendered_items, update, index, cx);
-                           
+
                             cx.notify(); // Trigger re-render immediately
 
                             // Scroll to bottom after render completes
