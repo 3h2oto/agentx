@@ -3,7 +3,7 @@ use gpui::{
     RenderOnce, Styled, Window, anchored, deferred, div, prelude::FluentBuilder, px,
 };
 
-use gpui_component::{ActiveTheme, h_flex, v_flex};
+use gpui_component::{ActiveTheme, h_flex, scroll::ScrollableElement, v_flex};
 
 use agent_client_protocol::AvailableCommand;
 
@@ -87,7 +87,7 @@ impl RenderOnce for CommandSuggestionsPopover {
                         .position(position)
                         .child(
                             v_flex()
-                                .occlude()
+                                // .occlude()
                                 .w(bounds.size.width)
                                 .gap_2()
                                 .p_3()
@@ -102,6 +102,9 @@ impl RenderOnce for CommandSuggestionsPopover {
                                         .text_color(theme.muted_foreground)
                                         .child("Available Commands:"),
                                 )
+                                .max_h(px(140.0))
+                                .overflow_y_hidden()
+                                .overflow_y_scrollbar()
                                 .children(
                                     self.commands
                                         .into_iter()
