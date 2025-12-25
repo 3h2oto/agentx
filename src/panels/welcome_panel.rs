@@ -6,7 +6,7 @@ use gpui::{
 use gpui_component::{
     ActiveTheme, IndexPath, StyledExt,
     input::InputState,
-    list::{ListDelegate, ListItem, ListState},
+    list::{ListDelegate, ListState},
     select::{SelectEvent, SelectState},
     v_flex,
 };

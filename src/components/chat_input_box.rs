@@ -2,7 +2,7 @@ use gpui::{
     AnyElement, App, Bounds, ElementId, Entity, Focusable, InteractiveElement, IntoElement,
     ParentElement, Pixels, RenderOnce, Styled, Window, div, prelude::FluentBuilder, px,
 };
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use gpui_component::{
     ActiveTheme, Disableable, ElementExt, Icon, IconName, Sizable, button::{Button, ButtonCustomVariant, ButtonVariants}, h_flex, input::{Input, InputState}, list::{List, ListDelegate, ListState}, popover::Popover, select::{Select, SelectState}, v_flex
@@ -299,9 +299,15 @@ impl RenderOnce for ChatInputBox {
         let command_popover = if show_commands {
             let bounds = command_anchor.read(cx).bounds;
 
+            let list_id = ElementId::NamedChild(
+                Arc::new(self.id.clone()),
+                "command-suggestions-list".into(),
+            );
+
             CommandSuggestionsPopover::new(self.command_suggestions)
                 .anchor_bounds(bounds)
                 .visible(true)
+                .list_id(list_id)
                 .into_any_element()
         } else {
             div().into_any_element()

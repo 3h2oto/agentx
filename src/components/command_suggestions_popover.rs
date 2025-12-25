@@ -1,11 +1,111 @@
 use gpui::{
-    App, Bounds, Corner, InteractiveElement, IntoElement, ParentElement, Pixels, Point,
+    App, Bounds, Context, Corner, ElementId, IntoElement, ParentElement, Pixels, Point,
     RenderOnce, Styled, Window, anchored, deferred, div, prelude::FluentBuilder, px,
 };
 
-use gpui_component::{ActiveTheme, h_flex, scroll::ScrollableElement, v_flex};
+use gpui_component::{
+    ActiveTheme, IndexPath, h_flex, list::{List, ListDelegate, ListItem, ListState}, v_flex,
+};
 
 use agent_client_protocol::AvailableCommand;
+
+struct CommandSuggestionsListDelegate {
+    commands: Vec<AvailableCommand>,
+    selected_index: Option<usize>,
+    on_select: Option<Box<dyn Fn(&AvailableCommand, &mut Window, &mut App) + 'static>>,
+}
+
+impl CommandSuggestionsListDelegate {
+    fn new(
+        commands: Vec<AvailableCommand>,
+        on_select: Option<Box<dyn Fn(&AvailableCommand, &mut Window, &mut App) + 'static>>,
+    ) -> Self {
+        Self {
+            commands,
+            selected_index: None,
+            on_select,
+        }
+    }
+
+    fn set_commands(
+        &mut self,
+        commands: Vec<AvailableCommand>,
+        on_select: Option<Box<dyn Fn(&AvailableCommand, &mut Window, &mut App) + 'static>>,
+    ) {
+        self.commands = commands;
+        self.on_select = on_select;
+        self.selected_index = None;
+    }
+}
+
+impl ListDelegate for CommandSuggestionsListDelegate {
+    type Item = ListItem;
+
+    fn items_count(&self, _: usize, _: &App) -> usize {
+        self.commands.len()
+    }
+
+    fn render_item(
+        &mut self,
+        ix: IndexPath,
+        _: &mut Window,
+        cx: &mut Context<ListState<Self>>,
+    ) -> Option<Self::Item> {
+        let command = self.commands.get(ix.row)?;
+        let theme = cx.theme();
+        let command_count = self.commands.len();
+
+        Some(
+            ListItem::new(ix).w_full().child(
+                h_flex()
+                    .w_full()
+                    .gap_3()
+                    .items_center()
+                    .child(
+                        div()
+                            .w(px(140.))
+                            .text_sm()
+                            .font_family("Monaco, 'Courier New', monospace")
+                            .text_color(theme.popover_foreground)
+                            .child(format!("/{}", command.name)),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .text_sm()
+                            .text_color(theme.muted_foreground)
+                            .overflow_x_hidden()
+                            .text_ellipsis()
+                            .child(command.description.clone()),
+                    ),
+            )
+            .when(ix.row + 1 < command_count, |item| {
+                item.border_b_1().border_color(theme.border)
+            }),
+        )
+    }
+
+    fn set_selected_index(
+        &mut self,
+        ix: Option<IndexPath>,
+        _: &mut Window,
+        _: &mut Context<ListState<Self>>,
+    ) {
+        self.selected_index = ix.map(|ix| ix.row);
+    }
+
+    fn confirm(&mut self, _: bool, window: &mut Window, cx: &mut Context<ListState<Self>>) {
+        let Some(selected_index) = self.selected_index else {
+            return;
+        };
+        let Some(command) = self.commands.get(selected_index) else {
+            return;
+        };
+        if let Some(on_select) = &self.on_select {
+            on_select(command, window, cx);
+        }
+    }
+}
 
 /// A popover component that displays command suggestions above an anchor element.
 ///
@@ -24,6 +124,8 @@ pub struct CommandSuggestionsPopover {
     visible: bool,
     /// Optional click handler for command selection
     on_select: Option<Box<dyn Fn(&AvailableCommand, &mut Window, &mut App) + 'static>>,
+    /// Key used to persist the list state across renders
+    list_id: ElementId,
 }
 
 impl CommandSuggestionsPopover {
@@ -34,6 +136,7 @@ impl CommandSuggestionsPopover {
             commands,
             visible: true,
             on_select: None,
+            list_id: ElementId::Name("command-suggestions-list".into()),
         }
     }
 
@@ -57,17 +160,20 @@ impl CommandSuggestionsPopover {
         self.on_select = Some(Box::new(callback));
         self
     }
+
+    /// Set the list id used to persist the list state across renders
+    pub fn list_id(mut self, list_id: ElementId) -> Self {
+        self.list_id = list_id;
+        self
+    }
 }
 
 impl RenderOnce for CommandSuggestionsPopover {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         // Early return if not visible or no commands
         if !self.visible || self.commands.is_empty() {
             return div().into_any_element();
         }
-
-        // Get theme
-        let theme = cx.theme();
 
         // Calculate position based on anchor bounds
         match self.anchor_bounds {
@@ -78,7 +184,24 @@ impl RenderOnce for CommandSuggestionsPopover {
                         y: -px(8.),
                     };
 
-                let command_count = self.commands.len();
+                let list_state = window.use_keyed_state(self.list_id.clone(), cx, |window, cx| {
+                    ListState::new(
+                        CommandSuggestionsListDelegate::new(Vec::new(), None),
+                        window,
+                        cx,
+                    )
+                });
+
+                let commands = self.commands;
+                let on_select = self.on_select;
+                list_state.update(cx, |state, cx| {
+                    state.delegate_mut().set_commands(commands, on_select);
+                    state.set_selected_index(None, window, cx);
+                    cx.notify();
+                });
+
+                // Get theme after list state creation to avoid borrow conflicts.
+                let theme = cx.theme();
 
                 deferred(
                     anchored()
@@ -102,44 +225,11 @@ impl RenderOnce for CommandSuggestionsPopover {
                                         .text_color(theme.muted_foreground)
                                         .child("Available Commands:"),
                                 )
-                                .max_h(px(140.0))
-                                .overflow_y_hidden()
-                                .overflow_y_scrollbar()
-                                .children(
-                                    self.commands
-                                        .into_iter()
-                                        .enumerate()
-                                        .map(|(idx, command)| {
-                                            let row = h_flex()
-                                                .w_full()
-                                                .gap_3()
-                                                .items_center()
-                                                .py_1()
-                                                .child(
-                                                    div()
-                                                        .w(px(140.))
-                                                        .text_sm()
-                                                        .font_family(
-                                                            "Monaco, 'Courier New', monospace",
-                                                        )
-                                                        .text_color(theme.popover_foreground)
-                                                        .child(format!("/{}", command.name)),
-                                                )
-                                                .child(
-                                                    div()
-                                                        .flex_1()
-                                                        .text_sm()
-                                                        .text_color(theme.muted_foreground)
-                                                        .overflow_x_hidden()
-                                                        .text_ellipsis()
-                                                        .child(command.description),
-                                                );
-
-                                            // Add border between items except for the last one
-                                            row.when(idx + 1 < command_count, |row| {
-                                                row.border_b_1().border_color(theme.border)
-                                            })
-                                        }),
+                                .child(
+                                    div()
+                                        .w_full()
+                                        .h(px(140.0))
+                                        .child(List::new(&list_state).size_full()),
                                 ),
                         ),
                 )
