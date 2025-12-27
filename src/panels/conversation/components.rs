@@ -21,11 +21,11 @@ use super::types::{ResourceInfo, ToolCallStatusExt, ToolKindExt, get_file_icon};
 use crate::{ShowToolCallDetail, UserMessageData};
 
 // ============================================================================
-// Diff Helpers
+// Diff Statistics
 // ============================================================================
 
-/// Diff statistics for compact display
-#[derive(Debug, Clone)]
+/// Diff statistics
+#[derive(Debug, Clone, Default)]
 struct DiffStats {
     additions: usize,
     deletions: usize,
@@ -51,79 +51,24 @@ fn calculate_diff_stats(old_text: &str, new_text: &str) -> DiffStats {
     }
 }
 
-/// Render a compact diff preview for conversation panel
-fn render_compact_diff_preview<V: 'static>(
-    diff: &agent_client_protocol::Diff,
-    cx: &mut Context<V>,
-) -> impl IntoElement {
-    // Calculate statistics
-    let stats = match &diff.old_text {
-        Some(old_text) => calculate_diff_stats(old_text, &diff.new_text),
-        None => DiffStats {
-            additions: diff.new_text.lines().count(),
-            deletions: 0,
-        },
-    };
-
-    v_flex()
-        .gap_2()
-        .w_full()
-        .child(
-            // File path and stats header
-            h_flex()
-                .items_center()
-                .gap_2()
-                .child(
-                    Icon::new(IconName::File)
-                        .size(px(14.))
-                        .text_color(cx.theme().accent),
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .text_size(px(12.))
-                        .font_weight(gpui::FontWeight::MEDIUM)
-                        .text_color(cx.theme().foreground)
-                        .child(diff.path.display().to_string()),
-                )
-                .child(
-                    h_flex()
-                        .gap_1()
-                        .items_center()
-                        .child(
-                            div()
-                                .text_size(px(11.))
-                                .font_weight(gpui::FontWeight::MEDIUM)
-                                .text_color(cx.theme().green)
-                                .child(format!("+{}", stats.additions))
-                        )
-                        .child(
-                            div()
-                                .text_size(px(11.))
-                                .font_weight(gpui::FontWeight::MEDIUM)
-                                .text_color(cx.theme().red)
-                                .child(format!("-{}", stats.deletions))
-                        )
-                )
-                .when(diff.old_text.is_none(), |this| {
-                    this.child(
-                        div()
-                            .px_1()
-                            .rounded(px(3.))
-                            .bg(cx.theme().green.opacity(0.2))
-                            .text_size(px(10.))
-                            .text_color(cx.theme().green)
-                            .child("NEW")
-                    )
-                })
-        )
-        .child(
-            // Info message
-            div()
-                .text_size(px(11.))
-                .text_color(cx.theme().muted_foreground)
-                .child("💡 Click the Info button above to view full diff")
-        )
+/// Extract diff statistics from tool call content
+fn extract_diff_stats_from_tool_call(tool_call: &ToolCall) -> Option<DiffStats> {
+    // Find the first Diff content in the tool call
+    for content in &tool_call.content {
+        if let ToolCallContent::Diff(diff) = content {
+            return Some(match &diff.old_text {
+                Some(old_text) => calculate_diff_stats(old_text, &diff.new_text),
+                None => {
+                    // New file - all lines are additions
+                    DiffStats {
+                        additions: diff.new_text.lines().count(),
+                        deletions: 0,
+                    }
+                }
+            });
+        }
+    }
+    None
 }
 
 // ============================================================================
@@ -430,6 +375,9 @@ impl Render for ToolCallItemState {
         let kind_icon = self.tool_call.kind.icon();
         let status_icon = self.tool_call.status.icon();
 
+        // Extract diff stats if this is a diff tool call
+        let diff_stats = extract_diff_stats_from_tool_call(&self.tool_call);
+
         Collapsible::new()
             .open(open)
             .w_full()
@@ -453,6 +401,30 @@ impl Render for ToolCallItemState {
                             .text_color(cx.theme().foreground)
                             .child(title),
                     )
+                    // Show diff stats if available
+                    .when_some(diff_stats, |this, stats| {
+                        this.child(
+                            h_flex()
+                                .gap_1()
+                                .items_center()
+                                .child(
+                                    // Additions
+                                    div()
+                                        .text_size(px(11.))
+                                        .font_weight(gpui::FontWeight::MEDIUM)
+                                        .text_color(cx.theme().green)
+                                        .child(format!("+{}", stats.additions))
+                                )
+                                .child(
+                                    // Deletions
+                                    div()
+                                        .text_size(px(11.))
+                                        .font_weight(gpui::FontWeight::MEDIUM)
+                                        .text_color(cx.theme().red)
+                                        .child(format!("-{}", stats.deletions))
+                                )
+                        )
+                    })
                     .child(
                         Icon::new(status_icon)
                             .size(px(14.))
@@ -523,7 +495,16 @@ impl Render for ToolCallItemState {
                                     _ => None,
                                 },
                                 ToolCallContent::Diff(diff) => Some(
-                                    div().child(render_compact_diff_preview(diff, cx))
+                                    div()
+                                        .text_size(px(12.))
+                                        .text_color(cx.theme().muted_foreground)
+                                        .line_height(px(18.))
+                                        .child(format!(
+                                            "Modified: {}\n{} -> {}",
+                                            diff.path.display(),
+                                            diff.old_text.as_deref().unwrap_or("<new file>"),
+                                            diff.new_text
+                                        )),
                                 ),
                                 ToolCallContent::Terminal(terminal) => Some(
                                     div()

@@ -35,6 +35,19 @@ enum DiffLine {
     },
 }
 
+/// Represents a display item in the diff view (can be a line or a collapsed section)
+#[derive(Debug, Clone)]
+enum DiffDisplayItem {
+    /// A regular diff line
+    Line(DiffLine),
+    /// A collapsed section of unchanged lines
+    Collapsed {
+        start_old: usize,
+        start_new: usize,
+        count: usize,
+    },
+}
+
 /// Panel that displays detailed tool call content
 pub struct ToolCallDetailPanel {
     focus_handle: FocusHandle,
@@ -128,6 +141,126 @@ impl ToolCallDetailPanel {
         result
     }
 
+    /// Apply context collapsing to diff lines
+    /// Only show changed lines with N lines of context before/after
+    fn apply_context_collapsing(&self, diff_lines: Vec<DiffLine>) -> Vec<DiffDisplayItem> {
+        const CONTEXT_LINES: usize = 5; // Show 5 lines before and after changes
+        const MIN_COLLAPSE_SIZE: usize = CONTEXT_LINES * 2 + 1; // Minimum lines to collapse
+
+        let mut display_items: Vec<DiffDisplayItem> = Vec::new();
+        let mut context_buffer: Vec<DiffLine> = Vec::new();
+        let mut last_change_index: Option<usize> = None;
+
+        for (i, line) in diff_lines.iter().enumerate() {
+            match line {
+                DiffLine::Context { .. } => {
+                    // Accumulate context lines
+                    context_buffer.push(line.clone());
+                }
+                DiffLine::Insert { .. } | DiffLine::Delete { .. } => {
+                    // Found a change - process buffered context
+                    if !context_buffer.is_empty() {
+                        if let Some(last_idx) = last_change_index {
+                            // There was a previous change
+                            let distance = i - last_idx - 1;
+
+                            if distance >= MIN_COLLAPSE_SIZE {
+                                // Show CONTEXT_LINES after previous change
+                                for ctx in context_buffer.iter().take(CONTEXT_LINES) {
+                                    display_items.push(DiffDisplayItem::Line(ctx.clone()));
+                                }
+
+                                // Collapse the middle
+                                let collapsed_count = distance - CONTEXT_LINES * 2;
+                                if collapsed_count > 0 {
+                                    if let DiffLine::Context { old_num, new_num, .. } =
+                                        &context_buffer[CONTEXT_LINES]
+                                    {
+                                        display_items.push(DiffDisplayItem::Collapsed {
+                                            start_old: *old_num,
+                                            start_new: *new_num,
+                                            count: collapsed_count,
+                                        });
+                                    }
+                                }
+
+                                // Show CONTEXT_LINES before current change
+                                let start = context_buffer.len().saturating_sub(CONTEXT_LINES);
+                                for ctx in context_buffer.iter().skip(start) {
+                                    display_items.push(DiffDisplayItem::Line(ctx.clone()));
+                                }
+                            } else {
+                                // Distance is small, show all context
+                                for ctx in &context_buffer {
+                                    display_items.push(DiffDisplayItem::Line(ctx.clone()));
+                                }
+                            }
+                        } else {
+                            // This is the first change
+                            if context_buffer.len() > CONTEXT_LINES {
+                                // Collapse leading context, only show last CONTEXT_LINES
+                                let collapsed_count = context_buffer.len() - CONTEXT_LINES;
+                                if let DiffLine::Context { old_num, new_num, .. } =
+                                    &context_buffer[0]
+                                {
+                                    display_items.push(DiffDisplayItem::Collapsed {
+                                        start_old: *old_num,
+                                        start_new: *new_num,
+                                        count: collapsed_count,
+                                    });
+                                }
+
+                                let start = context_buffer.len() - CONTEXT_LINES;
+                                for ctx in context_buffer.iter().skip(start) {
+                                    display_items.push(DiffDisplayItem::Line(ctx.clone()));
+                                }
+                            } else {
+                                // Show all leading context
+                                for ctx in &context_buffer {
+                                    display_items.push(DiffDisplayItem::Line(ctx.clone()));
+                                }
+                            }
+                        }
+
+                        context_buffer.clear();
+                    }
+
+                    // Add the change line
+                    display_items.push(DiffDisplayItem::Line(line.clone()));
+                    last_change_index = Some(i);
+                }
+            }
+        }
+
+        // Handle trailing context
+        if !context_buffer.is_empty() {
+            if context_buffer.len() > CONTEXT_LINES {
+                // Show first CONTEXT_LINES, collapse the rest
+                for ctx in context_buffer.iter().take(CONTEXT_LINES) {
+                    display_items.push(DiffDisplayItem::Line(ctx.clone()));
+                }
+
+                let collapsed_count = context_buffer.len() - CONTEXT_LINES;
+                if let DiffLine::Context { old_num, new_num, .. } =
+                    &context_buffer[CONTEXT_LINES]
+                {
+                    display_items.push(DiffDisplayItem::Collapsed {
+                        start_old: *old_num,
+                        start_new: *new_num,
+                        count: collapsed_count,
+                    });
+                }
+            } else {
+                // Show all trailing context
+                for ctx in &context_buffer {
+                    display_items.push(DiffDisplayItem::Line(ctx.clone()));
+                }
+            }
+        }
+
+        display_items
+    }
+
     /// Render a single diff line (Phase 1: plain text)
     fn render_diff_line(
         &self,
@@ -209,6 +342,52 @@ impl ToolCallDetailPanel {
         }
     }
 
+    /// Render a collapsed section placeholder
+    fn render_collapsed_section(
+        &self,
+        start_old: usize,
+        start_new: usize,
+        count: usize,
+        cx: &Context<Self>,
+    ) -> impl IntoElement {
+        h_flex()
+            .w_full()
+            .items_center()
+            .justify_center()
+            .py_2()
+            .bg(cx.theme().muted.opacity(0.3))
+            .border_y_1()
+            .border_color(cx.theme().border)
+            .child(
+                div()
+                    .text_size(px(11.))
+                    .text_color(cx.theme().muted_foreground)
+                    .child(format!(
+                        "⋯ {} unchanged lines hidden ({}..{}, {}..{}) ⋯",
+                        count,
+                        start_old,
+                        start_old + count - 1,
+                        start_new,
+                        start_new + count - 1
+                    ))
+            )
+    }
+
+    /// Render a diff display item (either a line or a collapsed section)
+    fn render_diff_display_item(
+        &self,
+        item: &DiffDisplayItem,
+        cx: &Context<Self>,
+    ) -> impl IntoElement {
+        match item {
+            DiffDisplayItem::Line(line) => self.render_diff_line(line, cx).into_any_element(),
+            DiffDisplayItem::Collapsed { start_old, start_new, count } => {
+                self.render_collapsed_section(*start_old, *start_new, *count, cx)
+                    .into_any_element()
+            }
+        }
+    }
+
     /// Render complete diff view with file header
     fn render_diff_view(
         &self,
@@ -245,8 +424,11 @@ impl ToolCallDetailPanel {
             }
         };
 
+        // Apply context collapsing to show only changed parts + context
+        let display_items = self.apply_context_collapsing(diff_lines);
+
         const MAX_DIFF_LINES: usize = 5000;
-        let total_lines = diff_lines.len();
+        let total_lines = display_items.len();
         let truncated = total_lines > MAX_DIFF_LINES;
 
         v_flex()
@@ -316,7 +498,7 @@ impl ToolCallDetailPanel {
                     .child(
                         v_flex()
                             .w_full()
-                            .when(diff_lines.is_empty(), |this| {
+                            .when(display_items.is_empty(), |this| {
                                 this.child(
                                     div()
                                         .p_4()
@@ -328,10 +510,10 @@ impl ToolCallDetailPanel {
                                 )
                             })
                             .children(
-                                diff_lines
+                                display_items
                                     .iter()
                                     .take(MAX_DIFF_LINES)
-                                    .map(|line| self.render_diff_line(line, cx))
+                                    .map(|item| self.render_diff_display_item(item, cx))
                             )
                     )
             )
