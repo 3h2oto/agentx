@@ -22,7 +22,7 @@ pub use chat_input_box::ChatInputBox;
 
 pub use command_suggestions_popover::CommandSuggestionsPopover;
 
-pub use diff_summary::{DiffSummary, DiffSummaryData, DiffSummaryView, FileChangeStats};
+pub use diff_summary::{DiffSummary, DiffSummaryData, FileChangeStats};
 
 pub use input_suggestion::{InputSuggestion, InputSuggestionEvent, InputSuggestionItem, InputSuggestionState};
 

@@ -14,8 +14,8 @@ use agent_client_protocol::{ContentChunk, ImageContent, SessionUpdate, ToolCall}
 use chrono::{DateTime, Utc};
 
 use crate::{
-    AgentMessage, AgentTodoList, AppState, CancelSession, ChatInputBox, DiffSummaryData,
-    DiffSummaryView, SendMessageToSession, app::actions::AddCodeSelection,
+    AgentMessage, AgentTodoList, AppState, CancelSession, ChatInputBox, DiffSummary,
+    DiffSummaryData, SendMessageToSession, app::actions::AddCodeSelection,
     core::services::SessionStatus, panels::dock_panel::DockPanel,
 };
 
@@ -55,8 +55,8 @@ pub struct ConversationPanel {
     code_selections: Vec<AddCodeSelection>,
     /// Session status information for display
     session_status: Option<SessionStatusInfo>,
-    /// Diff summary view for displaying file changes
-    diff_summary: Option<Entity<DiffSummaryView>>,
+    /// Diff summary for displaying file changes
+    diff_summary: Option<Entity<DiffSummary>>,
 }
 
 impl ConversationPanel {
@@ -522,7 +522,7 @@ impl ConversationPanel {
     }
 
     /// Update the diff summary based on current tool calls
-    fn update_diff_summary(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn update_diff_summary(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         // Collect all tool calls
         let tool_calls = self.collect_tool_calls(cx);
 
@@ -538,12 +538,12 @@ impl ConversationPanel {
 
         // Update or create diff summary
         if let Some(summary) = &self.diff_summary {
-            summary.update(cx, |view, cx| {
-                view.update_data(summary_data, cx);
+            summary.update(cx, |summary, cx| {
+                summary.update_data(summary_data, cx);
             });
         } else {
-            // Create new summary view
-            self.diff_summary = Some(DiffSummaryView::new(summary_data, window, cx));
+            // Create new summary
+            self.diff_summary = Some(cx.new(|_| DiffSummary::new(summary_data)));
         }
     }
 

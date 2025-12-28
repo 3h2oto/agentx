@@ -56,7 +56,7 @@ pub use title_bar::AppTitleBar;
 // Export components
 pub use components::{
     AgentMessage, AgentMessageData, AgentMessageMeta, AgentMessageView, AgentTodoList,
-    AgentTodoListView, ChatInputBox, DiffSummary, DiffSummaryData, DiffSummaryView,
+    AgentTodoListView, ChatInputBox, DiffSummary, DiffSummaryData,
     FileChangeStats, PermissionRequest, PermissionRequestView, PlanMeta, StatusIndicator,
     ToolCallItem, ToolCallItemView, UserMessage, UserMessageData, UserMessageView,
 };
