@@ -143,8 +143,9 @@ impl RenderOnce for AgentMessage {
                                 // .text_xs()
                                 .text_sm()
                                 .text_color(cx.theme().foreground)
-                                .selectable(true),
-                        ),
+                                .selectable(true)
+                                .pr_3(),
+                        ).pr_3(),
                     )
                     .when(show_thinking, |this| {
                         this.child(

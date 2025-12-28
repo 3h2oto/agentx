@@ -14,8 +14,9 @@ use agent_client_protocol::{ContentChunk, ImageContent, SessionUpdate, ToolCall}
 use chrono::{DateTime, Utc};
 
 use crate::{
-    AgentMessage, AgentTodoList, AppState, CancelSession, ChatInputBox, SendMessageToSession,
-    app::actions::AddCodeSelection, core::services::SessionStatus, panels::dock_panel::DockPanel,
+    AgentMessage, AgentTodoList, AppState, CancelSession, ChatInputBox, DiffSummaryData,
+    DiffSummaryView, SendMessageToSession, app::actions::AddCodeSelection,
+    core::services::SessionStatus, panels::dock_panel::DockPanel,
 };
 
 // Import from submodules
@@ -54,6 +55,8 @@ pub struct ConversationPanel {
     code_selections: Vec<AddCodeSelection>,
     /// Session status information for display
     session_status: Option<SessionStatusInfo>,
+    /// Diff summary view for displaying file changes
+    diff_summary: Option<Entity<DiffSummaryView>>,
 }
 
 impl ConversationPanel {
@@ -107,6 +110,7 @@ impl ConversationPanel {
             pasted_images: Vec::new(),
             code_selections: Vec::new(),
             session_status: None,
+            diff_summary: None,
         }
     }
 
@@ -134,6 +138,7 @@ impl ConversationPanel {
             pasted_images: Vec::new(),
             code_selections: Vec::new(),
             session_status: None,
+            diff_summary: None,
         }
     }
 
@@ -499,6 +504,47 @@ impl ConversationPanel {
             "Subscribed to workspace bus for status updates: {}",
             filter_log3.as_deref().unwrap_or("all sessions")
         );
+    }
+
+    /// Collect all ToolCall instances from rendered items
+    fn collect_tool_calls(&self, cx: &App) -> Vec<ToolCall> {
+        let mut tool_calls = Vec::new();
+
+        for item in &self.rendered_items {
+            if let RenderedItem::ToolCall(entity) = item {
+                // Read the ToolCallItemState and extract the ToolCall
+                let tool_call = entity.read(cx).tool_call.clone();
+                tool_calls.push(tool_call);
+            }
+        }
+
+        tool_calls
+    }
+
+    /// Update the diff summary based on current tool calls
+    fn update_diff_summary(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // Collect all tool calls
+        let tool_calls = self.collect_tool_calls(cx);
+
+        // Create summary data from tool calls
+        let summary_data = DiffSummaryData::from_tool_calls(&tool_calls);
+
+        // Only show summary if there are actual changes
+        if !summary_data.has_changes() {
+            // Clear summary if no changes
+            self.diff_summary = None;
+            return;
+        }
+
+        // Update or create diff summary
+        if let Some(summary) = &self.diff_summary {
+            summary.update(cx, |view, cx| {
+                view.update_data(summary_data, cx);
+            });
+        } else {
+            // Create new summary view
+            self.diff_summary = Some(DiffSummaryView::new(summary_data, window, cx));
+        }
     }
 
     /// Helper to add an update to the rendered items list
@@ -1043,6 +1089,9 @@ impl Focusable for ConversationPanel {
 
 impl Render for ConversationPanel {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // Update diff summary based on current tool calls
+        self.update_diff_summary(_window, cx);
+
         let mut children = v_flex().p_4().gap_3().bg(cx.theme().background);
 
         for item in &self.rendered_items {
@@ -1125,6 +1174,16 @@ impl Render for ConversationPanel {
             )
             .when_some(self.render_status_bar(cx), |this, status_bar| {
                 this.child(status_bar)
+            })
+            .when_some(self.diff_summary.clone(), |this, summary| {
+                // Diff summary above input box
+                this.child(
+                    div()
+                        .w_full()
+                        .px_2()
+                        .pb_2()
+                        .child(summary)
+                )
             })
             .child(
                 // Chat input box at bottom (fixed, not scrollable)

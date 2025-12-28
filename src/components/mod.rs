@@ -3,6 +3,7 @@ mod agent_select;
 mod agent_todo_list;
 mod chat_input_box;
 mod command_suggestions_popover;
+mod diff_summary;
 mod input_suggestion;
 mod file_picker;
 mod permission_request;
@@ -20,6 +21,8 @@ pub use agent_todo_list::{AgentTodoList, AgentTodoListView, PlanMeta};
 pub use chat_input_box::ChatInputBox;
 
 pub use command_suggestions_popover::CommandSuggestionsPopover;
+
+pub use diff_summary::{DiffSummary, DiffSummaryData, DiffSummaryView, FileChangeStats};
 
 pub use input_suggestion::{InputSuggestion, InputSuggestionEvent, InputSuggestionItem, InputSuggestionState};
 
