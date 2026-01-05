@@ -2,6 +2,7 @@ use gpui::{
     App, AppContext, ClipboardEntry, Context, Entity, FocusHandle, Focusable, InteractiveElement,
     IntoElement, ParentElement, Render, SharedString, Styled, Subscription, Window, px,
 };
+use std::collections::HashSet;
 
 use gpui_component::{
     ActiveTheme, IndexPath, StyledExt,
@@ -33,6 +34,7 @@ pub struct WelcomePanel {
     mode_select: Entity<SelectState<Vec<&'static str>>>,
     agent_select: Entity<SelectState<Vec<AgentItem>>>,
     session_select: Entity<SelectState<Vec<String>>>,
+    current_agent_name: Option<String>,
     current_session_id: Option<String>,
     has_agents: bool,
     has_workspace: bool,
@@ -53,6 +55,12 @@ pub struct WelcomePanel {
     available_mcps: Vec<(String, McpServerConfig)>,
     /// Selected MCP server names
     selected_mcps: Vec<String>,
+    /// Whether MCP selection has been initialized from config
+    mcp_selection_initialized: bool,
+    /// Whether MCP selection has been overridden by user
+    mcp_selection_overridden: bool,
+    /// Whether we should recreate the session after MCP config changes
+    pending_mcp_session_recreate: bool,
 }
 
 impl crate::panels::dock_panel::DockPanel for WelcomePanel {
@@ -161,11 +169,15 @@ impl WelcomePanel {
             );
             this._subscriptions.push(subscription);
 
-            // Refresh sessions when agent_select loses focus (agent selection changed)
-            let subscription = cx.on_focus_lost(window, |this: &mut Self, window, cx| {
-                this.on_agent_changed(window, cx);
-            });
-            this._subscriptions.push(subscription);
+            // Refresh sessions when agent selection changes
+            let agent_select_sub = cx.subscribe_in(
+                &this.agent_select,
+                window,
+                |this, _, _: &SelectEvent<Vec<AgentItem>>, window, cx| {
+                    this.on_agent_changed(window, cx);
+                },
+            );
+            this._subscriptions.push(agent_select_sub);
 
             // Subscribe to session_select changes to update welcome_session
             let session_select_sub = cx.subscribe_in(
@@ -289,6 +301,7 @@ impl WelcomePanel {
             mode_select,
             agent_select,
             session_select,
+            current_agent_name: None,
             current_session_id: None,
             has_agents,
             has_workspace: false,
@@ -303,12 +316,15 @@ impl WelcomePanel {
             _subscriptions: Vec::new(),
             available_mcps: Vec::new(),
             selected_mcps: Vec::new(),
+            mcp_selection_initialized: false,
+            mcp_selection_overridden: false,
+            pending_mcp_session_recreate: false,
         };
 
         // Load sessions for the initially selected agent if any
         if has_agents {
             if let Some(initial_agent) = first_agent {
-                panel.refresh_sessions_for_agent(&initial_agent, window, cx);
+                panel.refresh_sessions_for_agent(&initial_agent, None, window, cx);
             }
         }
 
@@ -334,12 +350,44 @@ impl WelcomePanel {
                     this.update(cx, |this, cx| {
                         // Directly use the HashMap as Vec of tuples
                         this.available_mcps = mcp_servers.into_iter().collect();
+                        this.sync_mcp_selection_with_available();
                         cx.notify();
                     });
                 }
             });
         })
         .detach();
+    }
+
+    fn sync_mcp_selection_with_available(&mut self) {
+        let enabled_mcps = self
+            .available_mcps
+            .iter()
+            .filter(|(_, config)| config.enabled)
+            .map(|(name, _)| name.clone())
+            .collect::<HashSet<_>>();
+
+        if self.mcp_selection_overridden {
+            self.selected_mcps
+                .retain(|name| enabled_mcps.contains(name));
+        } else {
+            self.selected_mcps = enabled_mcps.into_iter().collect();
+        }
+
+        self.mcp_selection_initialized = true;
+        self.selected_mcps.sort();
+    }
+
+    fn collect_mcp_servers_from_selection(
+        available_mcps: &[(String, McpServerConfig)],
+        selected_mcps: &[String],
+    ) -> Vec<agent_client_protocol::McpServer> {
+        let selected_set: HashSet<&String> = selected_mcps.iter().collect();
+        available_mcps
+            .iter()
+            .filter(|(name, config)| config.enabled && selected_set.contains(name))
+            .map(|(_, config)| config.config.clone())
+            .collect()
     }
 
     /// Try to refresh agents list from AppState if we don't have agents yet
@@ -417,18 +465,55 @@ impl WelcomePanel {
                 log::info!("[WelcomePanel] Agent updated: {}", name);
                 // No action needed - agent name hasn't changed
             }
-            AgentConfigEvent::ConfigReloaded { .. } => {
+            AgentConfigEvent::ConfigReloaded { config } => {
                 log::info!("[WelcomePanel] Agent config reloaded");
                 // Force full refresh
                 self.has_agents = false;
+                self.available_mcps = config.mcp_servers.clone().into_iter().collect();
+                self.available_mcps.sort_by(|a, b| a.0.cmp(&b.0));
+                self.sync_mcp_selection_with_available();
+                self.pending_mcp_session_recreate = self.current_agent_name.is_some();
             }
-            // Model, MCP Server, and Command events don't affect WelcomePanel
+            AgentConfigEvent::McpServerAdded { name, config } => {
+                log::info!("[WelcomePanel] MCP server added: {}", name);
+                if let Some(entry) = self
+                    .available_mcps
+                    .iter_mut()
+                    .find(|(server_name, _)| server_name == name)
+                {
+                    *entry = (name.clone(), config.clone());
+                } else {
+                    self.available_mcps.push((name.clone(), config.clone()));
+                }
+                self.available_mcps.sort_by(|a, b| a.0.cmp(&b.0));
+                self.sync_mcp_selection_with_available();
+                self.pending_mcp_session_recreate = self.current_agent_name.is_some();
+            }
+            AgentConfigEvent::McpServerUpdated { name, config } => {
+                log::info!("[WelcomePanel] MCP server updated: {}", name);
+                if let Some(entry) = self
+                    .available_mcps
+                    .iter_mut()
+                    .find(|(server_name, _)| server_name == name)
+                {
+                    *entry = (name.clone(), config.clone());
+                } else {
+                    self.available_mcps.push((name.clone(), config.clone()));
+                }
+                self.available_mcps.sort_by(|a, b| a.0.cmp(&b.0));
+                self.sync_mcp_selection_with_available();
+                self.pending_mcp_session_recreate = self.current_agent_name.is_some();
+            }
+            AgentConfigEvent::McpServerRemoved { name } => {
+                log::info!("[WelcomePanel] MCP server removed: {}", name);
+                self.available_mcps.retain(|(server_name, _)| server_name != name);
+                self.sync_mcp_selection_with_available();
+                self.pending_mcp_session_recreate = self.current_agent_name.is_some();
+            }
+            // Model and Command events don't affect WelcomePanel
             AgentConfigEvent::ModelAdded { .. }
             | AgentConfigEvent::ModelUpdated { .. }
             | AgentConfigEvent::ModelRemoved { .. }
-            | AgentConfigEvent::McpServerAdded { .. }
-            | AgentConfigEvent::McpServerUpdated { .. }
-            | AgentConfigEvent::McpServerRemoved { .. }
             | AgentConfigEvent::CommandAdded { .. }
             | AgentConfigEvent::CommandUpdated { .. }
             | AgentConfigEvent::CommandRemoved { .. } => {
@@ -449,6 +534,7 @@ impl WelcomePanel {
                     state.set_items(vec!["No sessions".to_string()], window, cx);
                     state.set_selected_index(None, window, cx);
                 });
+                self.current_agent_name = None;
                 self.current_session_id = None;
                 AppState::global_mut(cx).clear_welcome_session();
                 cx.notify();
@@ -456,8 +542,25 @@ impl WelcomePanel {
             }
         };
 
-        // Refresh sessions for the newly selected agent
-        self.refresh_sessions_for_agent(&agent_name, window, cx);
+        if self.current_agent_name.as_ref() == Some(&agent_name) {
+            return;
+        }
+
+        self.current_agent_name = Some(agent_name.clone());
+        self.begin_session_recreate(agent_name, window, cx);
+    }
+
+    fn on_mcp_selection_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let agent_name = self
+            .current_agent_name
+            .clone()
+            .or_else(|| self.agent_select.read(cx).selected_value().cloned())
+            .filter(|name| name != "No agents");
+
+        if let Some(agent_name) = agent_name {
+            self.current_agent_name = Some(agent_name.clone());
+            self.begin_session_recreate(agent_name, window, cx);
+        }
     }
 
     /// Handle session selection change - update welcome_session
@@ -479,7 +582,8 @@ impl WelcomePanel {
         };
 
         // Get all sessions for this agent
-        let sessions = agent_service.list_sessions_for_agent(&agent_name);
+        let mut sessions = agent_service.list_sessions_for_agent(&agent_name);
+        sessions.sort_by(|a, b| b.created_at.cmp(&a.created_at));
 
         // Get the selected session
         if let Some(selected_session) = sessions.get(selected_index) {
@@ -728,6 +832,7 @@ impl WelcomePanel {
     fn refresh_sessions_for_agent(
         &mut self,
         agent_name: &str,
+        preferred_session_id: Option<&str>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -736,7 +841,8 @@ impl WelcomePanel {
             None => return,
         };
 
-        let sessions = agent_service.list_sessions_for_agent(agent_name);
+        let mut sessions = agent_service.list_sessions_for_agent(agent_name);
+        sessions.sort_by(|a, b| b.created_at.cmp(&a.created_at));
 
         if sessions.is_empty() {
             // No sessions for this agent
@@ -762,18 +868,26 @@ impl WelcomePanel {
                 })
                 .collect();
 
+            let selected_index = preferred_session_id
+                .and_then(|session_id| {
+                    sessions
+                        .iter()
+                        .position(|session| session.session_id == session_id)
+                })
+                .unwrap_or(0);
+
             self.session_select.update(cx, |state, cx| {
                 state.set_items(session_display, window, cx);
-                state.set_selected_index(Some(IndexPath::default()), window, cx);
+                state.set_selected_index(Some(IndexPath::new(selected_index)), window, cx);
             });
 
-            // Set current session to the first one
-            if let Some(first_session) = sessions.first() {
-                self.current_session_id = Some(first_session.session_id.clone());
+            // Set current session to the selected one
+            if let Some(selected_session) = sessions.get(selected_index) {
+                self.current_session_id = Some(selected_session.session_id.clone());
 
                 // Store as welcome session for CreateTaskFromWelcome action
                 AppState::global_mut(cx).set_welcome_session(WelcomeSession {
-                    session_id: first_session.session_id.clone(),
+                    session_id: selected_session.session_id.clone(),
                     agent_name: agent_name.to_string(),
                 });
             }
@@ -782,40 +896,74 @@ impl WelcomePanel {
         cx.notify();
     }
 
-    /// Create a new session for the currently selected agent
-    fn create_new_session(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let agent_name = match self.agent_select.read(cx).selected_value().cloned() {
-            Some(name) if name != "No agents" => name,
-            _ => return,
-        };
+    fn begin_session_recreate(
+        &mut self,
+        agent_name: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.pending_mcp_session_recreate = false;
+        self.current_session_id = None;
+        AppState::global_mut(cx).clear_welcome_session();
+        self.session_select.update(cx, |state, cx| {
+            state.set_items(vec!["Creating session...".to_string()], window, cx);
+            state.set_selected_index(None, window, cx);
+        });
+        cx.notify();
 
+        self.create_session_for_agent(agent_name, window, cx);
+    }
+
+    fn create_session_for_agent(
+        &mut self,
+        agent_name: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let agent_service = match AppState::global(cx).agent_service() {
             Some(service) => service.clone(),
             None => return,
         };
 
+        let agent_config_service = AppState::global(cx).agent_config_service().cloned();
+        let available_mcps = self.available_mcps.clone();
+        let selected_mcps = self.selected_mcps.clone();
+        let mcp_selection_initialized = self.mcp_selection_initialized;
+
         let weak_self = cx.entity().downgrade();
         let agent_name_for_session = agent_name.clone();
         cx.spawn_in(window, async move |_this, window| {
-            match agent_service.create_session(&agent_name).await {
+            let mut mcp_servers =
+                Self::collect_mcp_servers_from_selection(&available_mcps, &selected_mcps);
+
+            if !mcp_selection_initialized {
+                if let Some(service) = agent_config_service {
+                    let defaults = service.list_mcp_servers().await;
+                    mcp_servers = defaults
+                        .into_iter()
+                        .filter(|(_, config)| config.enabled)
+                        .map(|(_, config)| config.config)
+                        .collect();
+                }
+            }
+
+            match agent_service
+                .create_session_with_mcp(&agent_name_for_session, mcp_servers)
+                .await
+            {
                 Ok(session_id) => {
                     log::info!("[WelcomePanel] Created new session: {}", session_id);
                     _ = window.update(|window, cx| {
-                        // Store as welcome session immediately
-                        AppState::global_mut(cx).set_welcome_session(WelcomeSession {
-                            session_id: session_id.clone(),
-                            agent_name: agent_name_for_session.clone(),
-                        });
-
-                        // Update UI
                         if let Some(this) = weak_self.upgrade() {
                             this.update(cx, |this, cx| {
                                 this.current_session_id = Some(session_id.clone());
                                 this.refresh_sessions_for_agent(
                                     &agent_name_for_session,
+                                    Some(&session_id),
                                     window,
                                     cx,
                                 );
+                                this.apply_selected_mode_to_session(cx);
                             });
                         }
                     });
@@ -826,6 +974,21 @@ impl WelcomePanel {
             }
         })
         .detach();
+    }
+
+    fn apply_selected_mode_to_session(&mut self, cx: &mut Context<Self>) {
+        self.on_mode_changed(cx);
+    }
+
+    /// Create a new session for the currently selected agent
+    fn create_new_session(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let agent_name = match self.agent_select.read(cx).selected_value().cloned() {
+            Some(name) if name != "No agents" => name,
+            _ => return,
+        };
+
+        self.current_agent_name = Some(agent_name.clone());
+        self.begin_session_recreate(agent_name, window, cx);
     }
 
     /// Handles sending the task based on the current input, mode, and agent selections.
@@ -980,6 +1143,12 @@ impl Render for WelcomePanel {
         //     self.code_selections.len(),
         //     self.pasted_images.len()
         // );
+        if self.pending_mcp_session_recreate {
+            self.pending_mcp_session_recreate = false;
+            if let Some(agent_name) = self.current_agent_name.clone() {
+                self.begin_session_recreate(agent_name, window, cx);
+            }
+        }
 
         v_flex()
             .size_full()
@@ -1027,13 +1196,18 @@ impl Render for WelcomePanel {
                         // Chat input with title and send handler
                         {
                             let entity = cx.entity().clone();
+                            let mut chat =
+                                ChatInputBox::new("welcome-chat-input", self.input_state.clone());
+                            if self.current_session_id.is_some() {
+                                chat = chat.mode_select(self.mode_select.clone());
+                            }
+
                             // log::debug!(
                             //     "[WelcomePanel::render] Creating ChatInputBox with {} code_selections",
                             //     self.code_selections.len()
                             // );
-                            ChatInputBox::new("welcome-chat-input", self.input_state.clone())
+                            chat
                                 // .title("New Task")
-                                .mode_select(self.mode_select.clone())
                                 .agent_select(self.agent_select.clone())
                                 .session_select(self.session_select.clone())
                                 .pasted_images(self.pasted_images.clone())
@@ -1083,7 +1257,7 @@ impl Render for WelcomePanel {
                                 // Pass MCP servers and selection to ChatInputBox
                                 .available_mcps(self.available_mcps.clone())
                                 .selected_mcps(self.selected_mcps.clone())
-                                .on_mcp_toggle(cx.listener(|this, (name, checked): &(String, bool), _window, cx| {
+                                .on_mcp_toggle(cx.listener(|this, (name, checked): &(String, bool), window, cx| {
                                     // Simple toggle logic
                                     if *checked {
                                         if !this.selected_mcps.contains(name) {
@@ -1092,7 +1266,9 @@ impl Render for WelcomePanel {
                                     } else {
                                         this.selected_mcps.retain(|s| s != name);
                                     }
+                                    this.mcp_selection_overridden = true;
                                     log::info!("[WelcomePanel] MCP '{}' {}", name, if *checked { "selected" } else { "deselected" });
+                                    this.on_mcp_selection_changed(window, cx);
                                     cx.notify();
                                 }))
                                 .on_paste(move |window, cx| {

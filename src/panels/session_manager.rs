@@ -107,9 +107,25 @@ impl SessionManagerPanel {
             }
         };
 
+        let agent_config_service = AppState::global(cx).agent_config_service().cloned();
+
         let weak_self = cx.entity().downgrade();
         cx.spawn_in(window, async move |_this, window| {
-            match agent_service.create_session(&agent_name).await {
+            let mcp_servers = if let Some(service) = agent_config_service {
+                service
+                    .list_mcp_servers()
+                    .await
+                    .into_iter()
+                    .filter(|(_, config)| config.enabled)
+                    .map(|(_, config)| config.config)
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            match agent_service
+                .create_session_with_mcp(&agent_name, mcp_servers)
+                .await
+            {
                 Ok(session_id) => {
                     log::info!(
                         "[SessionManagerPanel] Created session {} for agent {}",

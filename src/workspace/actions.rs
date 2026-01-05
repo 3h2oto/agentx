@@ -539,6 +539,8 @@ impl DockWorkspace {
             }
         };
 
+        let agent_config_service = AppState::global(cx).agent_config_service().cloned();
+
         let workspace_service = match AppState::global(cx).workspace_service() {
             Some(service) => service.clone(),
             None => {
@@ -562,7 +564,21 @@ impl DockWorkspace {
                 ws.session_id
             } else {
                 // No welcome session, create new one
-                match agent_service.create_session(&agent_name).await {
+                let mcp_servers = if let Some(service) = agent_config_service {
+                    service
+                        .list_mcp_servers()
+                        .await
+                        .into_iter()
+                        .filter(|(_, config)| config.enabled)
+                        .map(|(_, config)| config.config)
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                match agent_service
+                    .create_session_with_mcp(&agent_name, mcp_servers)
+                    .await
+                {
                     Ok(session_id) => {
                         log::info!(
                             "Created new session {} for agent {}",

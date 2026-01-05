@@ -98,11 +98,20 @@ impl AgentService {
 
     /// Create a new session for the agent
     pub async fn create_session(&self, agent_name: &str) -> Result<String> {
+        self.create_session_with_mcp(agent_name, Vec::new()).await
+    }
+
+    /// Create a new session with MCP servers configured
+    pub async fn create_session_with_mcp(
+        &self,
+        agent_name: &str,
+        mcp_servers: Vec<acp::McpServer>,
+    ) -> Result<String> {
         let agent_handle = self.get_agent_handle(agent_name).await?;
 
         let mut request = acp::NewSessionRequest::new(std::env::current_dir().unwrap_or_default());
         request.cwd = std::env::current_dir().unwrap_or_default();
-        request.mcp_servers = vec![];
+        request.mcp_servers = mcp_servers;
         request.meta = None;
 
         let session_id = agent_handle
