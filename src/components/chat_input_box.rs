@@ -82,6 +82,7 @@ pub struct ChatInputBox {
     model_select: Option<Entity<SelectState<Vec<ModelSelectItem>>>>,
     agent_select: Option<Entity<SelectState<Vec<AgentItem>>>>,
     session_select: Option<Entity<SelectState<Vec<String>>>>,
+    agent_status_text: Option<String>,
     on_new_session: Option<Box<dyn Fn(&gpui::ClickEvent, &mut Window, &mut App) + 'static>>,
     pasted_images: Vec<(ImageContent, String)>, // (ImageContent, filename for display)
     code_selections: Vec<AddCodeSelection>,     // Code selections from editor
@@ -121,6 +122,7 @@ impl ChatInputBox {
             model_select: None,
             agent_select: None,
             session_select: None,
+            agent_status_text: None,
             on_new_session: None,
             pasted_images: Vec::new(),
             code_selections: Vec::new(),
@@ -181,6 +183,12 @@ impl ChatInputBox {
     /// Set the agent select state
     pub fn agent_select(mut self, select: Entity<SelectState<Vec<AgentItem>>>) -> Self {
         self.agent_select = Some(select);
+        self
+    }
+
+    /// Set the agent status text shown next to the agent select
+    pub fn agent_status_text(mut self, text: impl Into<String>) -> Self {
+        self.agent_status_text = Some(text.into());
         self
     }
 
@@ -327,7 +335,6 @@ impl RenderOnce for ChatInputBox {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let on_send = self.on_send;
         let on_cancel = self.on_cancel;
-        let on_new_session = self.on_new_session;
         let on_paste_callback = self.on_paste.clone();
         let input_state_for_paste = self.input_state.clone();
         let input_state = self.input_state.clone();
@@ -704,23 +711,12 @@ impl RenderOnce for ChatInputBox {
                                                 .w(px(140.)),
                                         )
                                     })
-                                    .when_some(
-                                        self.session_select.clone(),
-                                        |this, session_select| {
-                                            this.child(
-                                                Select::new(&session_select)
-                                                    .small()
-                                                    .appearance(false),
-                                            )
-                                        },
-                                    )
-                                    .when_some(on_new_session, |this, on_new_session_callback| {
+                                    .when_some(self.agent_status_text.clone(), |this, text| {
                                         this.child(
-                                            Button::new("new-session")
-                                                .icon(Icon::new(IconName::Plus))
-                                                .ghost()
-                                                .small()
-                                                .on_click(on_new_session_callback),
+                                            div()
+                                                .text_xs()
+                                                .text_color(theme.muted_foreground)
+                                                .child(text),
                                         )
                                     })
                                     .when_some(self.mode_select, |this, mode_select| {

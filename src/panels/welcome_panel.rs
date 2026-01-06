@@ -40,7 +40,9 @@ pub struct WelcomePanel {
     current_agent_name: Option<String>,
     current_session_id: Option<String>,
     has_agents: bool,
+    has_modes: bool,
     has_models: bool,
+    is_session_loading: bool,
     has_workspace: bool,
     active_workspace_name: Option<String>,
     /// Specific workspace ID to display (if provided via action)
@@ -288,8 +290,8 @@ impl WelcomePanel {
 
         let mode_select = cx.new(|cx| {
             SelectState::new(
-                Self::default_mode_items(),
-                Some(IndexPath::default()),
+                Vec::new(),
+                None,
                 window,
                 cx,
             )
@@ -322,7 +324,9 @@ impl WelcomePanel {
             current_agent_name: None,
             current_session_id: None,
             has_agents,
+            has_modes: false,
             has_models: false,
+            is_session_loading: false,
             has_workspace: false,
             active_workspace_name: None,
             workspace_id,
@@ -556,6 +560,7 @@ impl WelcomePanel {
                 self.current_agent_name = None;
                 self.current_session_id = None;
                 AppState::global_mut(cx).clear_welcome_session();
+                self.is_session_loading = false;
                 self.sync_session_capabilities(None, window, cx);
                 cx.notify();
                 return;
@@ -935,13 +940,6 @@ impl WelcomePanel {
             .unwrap_or_default()
     }
 
-    fn default_mode_items() -> Vec<ModeSelectItem> {
-        ["default", "acceptedits", "plan", "dontAsk", "bypassPermissions"]
-            .into_iter()
-            .map(|mode| ModeSelectItem::new(mode, mode))
-            .collect()
-    }
-
     fn sync_session_capabilities(
         &mut self,
         session: Option<&AgentSessionInfo>,
@@ -969,9 +967,10 @@ impl WelcomePanel {
                     .collect::<Vec<_>>();
                 (items, Some(modes.current_mode_id.to_string()))
             })
-            .unwrap_or_else(|| (Self::default_mode_items(), None));
+            .unwrap_or_else(|| (Vec::new(), None));
 
         let has_items = !mode_items.is_empty();
+        self.has_modes = has_items;
         self.mode_select.update(cx, |state, cx| {
             state.set_items(mode_items, window, cx);
             if let Some(mode_id) = selected_mode_id {
@@ -1047,6 +1046,7 @@ impl WelcomePanel {
                 state.set_selected_index(None, window, cx);
             });
             self.current_session_id = None;
+            self.is_session_loading = false;
 
             // Clear welcome session when no sessions available
             AppState::global_mut(cx).clear_welcome_session();
@@ -1081,6 +1081,7 @@ impl WelcomePanel {
             // Set current session to the selected one
             if let Some(selected_session) = sessions.get(selected_index) {
                 self.current_session_id = Some(selected_session.session_id.clone());
+                self.is_session_loading = false;
 
                 // Store as welcome session for CreateTaskFromWelcome action
                 AppState::global_mut(cx).set_welcome_session(WelcomeSession {
@@ -1102,6 +1103,7 @@ impl WelcomePanel {
         cx: &mut Context<Self>,
     ) {
         self.pending_mcp_session_recreate = false;
+        self.is_session_loading = true;
         self.current_session_id = None;
         AppState::global_mut(cx).clear_welcome_session();
         self.session_select.update(cx, |state, cx| {
@@ -1171,6 +1173,14 @@ impl WelcomePanel {
                 }
                 Err(e) => {
                     log::error!("[WelcomePanel] Failed to create session: {}", e);
+                    _ = window.update(|_window, cx| {
+                        if let Some(this) = weak_self.upgrade() {
+                            this.update(cx, |this, cx| {
+                                this.is_session_loading = false;
+                                cx.notify();
+                            });
+                        }
+                    });
                 }
             }
         })
@@ -1403,10 +1413,15 @@ impl Render for WelcomePanel {
                             let mut chat =
                                 ChatInputBox::new("welcome-chat-input", self.input_state.clone());
                             if self.current_session_id.is_some() {
-                                chat = chat.mode_select(self.mode_select.clone());
+                                if self.has_modes {
+                                    chat = chat.mode_select(self.mode_select.clone());
+                                }
                                 if self.has_models {
                                     chat = chat.model_select(self.model_select.clone());
                                 }
+                            }
+                            if self.is_session_loading {
+                                chat = chat.agent_status_text("正在加载中...");
                             }
 
                             // log::debug!(
@@ -1416,7 +1431,6 @@ impl Render for WelcomePanel {
                             chat
                                 // .title("New Task")
                                 .agent_select(self.agent_select.clone())
-                                .session_select(self.session_select.clone())
                                 .pasted_images(self.pasted_images.clone())
                                 .code_selections(self.code_selections.clone())
                                 .file_suggestions(self.file_suggestions.clone())
@@ -1504,9 +1518,6 @@ impl Render for WelcomePanel {
                                         this.selected_files.remove(*idx);
                                         cx.notify();
                                     }
-                                }))
-                                .on_new_session(cx.listener(|this, _, window, cx| {
-                                    this.create_new_session(window, cx);
                                 }))
                                 .on_send(cx.listener(|this, _, window, cx| {
                                     this.handle_send_task(window, cx);

@@ -11,6 +11,16 @@
         "--experimental-acp"
       ],
       "env": {}
+    },
+    "Gemini": {
+      "command": "gemini",
+      "args": ["--experimental-acp"],
+      "env": {}
+    },
+    "QwenCode": {
+      "command": "qwen",
+      "args": ["--experimental-acp"],
+      "env": {}
     }
   },
   "upload_dir": ".",
