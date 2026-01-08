@@ -1,0 +1,223 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g., v0.5.0)"
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-bundle
+        run: cargo install cargo-bundle
+
+      - name: Build release
+        # working-directory: agent-studio
+        run: cargo build --release
+
+      - name: Create app bundle
+        # working-directory: agent-studio
+        run: cargo bundle --release
+
+      - name: Sign application (ad-hoc)
+        # working-directory: agent-studio
+        run: |
+          codesign --force --deep -s - target/release/bundle/osx/AgentX.app
+          codesign --verify --verbose target/release/bundle/osx/AgentX.app
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Create DMG
+        # working-directory: agent-studio
+        run: |
+          create-dmg \
+            --volname "AgentX" \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "AgentX.app" 150 190 \
+            --app-drop-link 450 185 \
+            "agentx-macos.dmg" \
+            "target/release/bundle/osx/AgentX.app"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentx-macos
+          path: agent-studio/agentx-macos.dmg
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release
+        # working-directory: agent-studio
+        run: cargo build --release
+
+      - name: Create installer directory
+        shell: bash
+        run: |
+          mkdir -p installer
+          cp agent-studio/target/release/agentx.exe installer/agentx-windows.exe
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentx-windows
+          path: installer/agentx-windows.exe
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libxkbcommon-x11-dev \
+            libwayland-dev \
+            libvulkan-dev \
+            libssl-dev \
+            libglib2.0-dev \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libjavascriptcoregtk-4.1-dev \
+            pkg-config
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release
+        # working-directory: agent-studio
+        run: cargo build --release
+
+      - name: Create tarball
+        run: |
+          mkdir -p agentx-linux
+          cp agent-studio/target/release/agentx agentx-linux/agentx
+          chmod +x agentx-linux/agentx
+          tar -czvf agentx-linux.tar.gz agentx-linux
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentx-linux
+          path: agentx-linux.tar.gz
+
+  release:
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    steps:
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: agentx-macos
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: agentx-windows
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: agentx-linux
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: AgentX ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            agentx-macos.dmg
+            agentx-windows.exe
+            agentx-linux.tar.gz
+          body: |
+            ## AgentX - AI Agent Studio
+
+            A full-featured desktop AI agent studio built with GPUI Component.
+
+            ### Features
+            - Dock-based layout system with persistent state
+            - Real-time agent communication via Agent Client Protocol (ACP)
+            - Multi-session management with JSONL persistence
+            - Code editor with LSP integration and syntax highlighting
+            - Auto-update system with version checking
+            - Light/dark theme support
+
+            ## Installation
+
+            ### macOS
+            1. Download `agentx-macos.dmg`
+            2. Open the DMG and drag AgentX to Applications
+            3. On first launch: right-click the app > Open > Open (to bypass Gatekeeper)
+
+            ### Windows
+            1. Download `agentx-windows.exe`
+            2. Run the executable directly
+            3. You may need to allow the app through Windows Defender SmartScreen
+
+            ### Linux
+            1. Download `agentx-linux.tar.gz`
+            2. Extract: `tar -xzvf agentx-linux.tar.gz`
+            3. Run: `./agentx-linux/agentx`
+            4. Ensure required dependencies are installed (Vulkan, GTK3, etc.)
+
+            ## Configuration
+
+            Create a `config.json` in the same directory as the executable:
+
+            ```json
+            {
+              "agent_servers": [
+                {
+                  "name": "my-agent",
+                  "command": "/path/to/agent/executable",
+                  "args": ["--arg1", "value1"]
+                }
+              ]
+            }
+            ```
+
+            For more details, see the [README](https://github.com/your-org/gpui-component/tree/main/agent-studio).
+
