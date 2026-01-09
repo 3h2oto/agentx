@@ -1,5 +1,6 @@
 use agentx::Assets;
 use agentx::{AgentManager, Config, PermissionStore, workspace::open_new};
+use agentx::core::config_manager;
 use anyhow::Context as _;
 use gpui::Application;
 use std::sync::Arc;
@@ -93,18 +94,29 @@ fn main() {
     });
 }
 
-/// Parse config path from command line arguments
+/// Parse config path from command line arguments or use user data directory
 fn parse_config_path() -> std::path::PathBuf {
-    let mut config_path = std::path::PathBuf::from("config.json");
     let mut args = std::env::args().skip(1);
 
+    // Check if user specified a custom config path via --config flag
     while let Some(flag) = args.next() {
         if flag == "--config" {
             if let Some(value) = args.next() {
-                config_path = std::path::PathBuf::from(value);
+                return std::path::PathBuf::from(value);
             }
         }
     }
 
-    config_path
+    // No custom config specified, use user data directory
+    match config_manager::initialize_user_config() {
+        Ok(path) => {
+            println!("Using config from user data directory: {}", path.display());
+            path
+        }
+        Err(e) => {
+            eprintln!("Failed to initialize user config: {}", e);
+            eprintln!("Falling back to local config.json");
+            std::path::PathBuf::from("config.json")
+        }
+    }
 }

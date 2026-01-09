@@ -11,6 +11,11 @@ use std::borrow::Cow;
 #[include = "logo/**/*.svg"]
 pub struct Assets;
 
+#[derive(RustEmbed)]
+#[folder = "./"]
+#[include = "config.json"]
+pub struct ConfigAssets;
+
 impl AssetSource for Assets {
     fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
         Self::get(path)
@@ -102,4 +107,11 @@ pub fn get_agent_icon(name: &str) -> Icon {
         // Default to Claude icon if no match
         crate::assets::Icon::Claude
     }
+}
+
+/// Get default config.json content embedded in the binary
+pub fn get_default_config() -> Option<String> {
+    ConfigAssets::get("config.json").map(|file| {
+        String::from_utf8_lossy(&file.data).to_string()
+    })
 }

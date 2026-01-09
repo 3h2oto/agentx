@@ -1,7 +1,7 @@
 mod app;
 mod assets;
 mod components;
-mod core;
+pub mod core;
 mod i18n;
 mod panels;
 mod reqwest_client;
