@@ -60,7 +60,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: agentx-macos
-          path: agent-studio/agentx-macos.dmg
+          path: agentx-macos.dmg
 
   build-windows:
     runs-on: windows-latest
