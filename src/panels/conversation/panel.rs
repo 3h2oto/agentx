@@ -4,7 +4,8 @@ use gpui::{
 };
 
 use gpui_component::{
-    ActiveTheme, Icon, IconName, h_flex, input::InputState, spinner::Spinner, v_flex,
+    ActiveTheme, Icon, IconName, h_flex, input::InputState, skeleton::Skeleton, spinner::Spinner,
+    v_flex,
 };
 
 // Use the published ACP schema crate
@@ -952,6 +953,29 @@ impl ConversationPanel {
         .detach();
     }
 
+    /// Render the loading skeleton when session is in progress
+    fn render_loading_skeleton(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        v_flex()
+            .gap_3()
+            .w_full()
+            .child(
+                h_flex()
+                    .items_start()
+                    .gap_2()
+                    // Agent icon skeleton (circular, same size as agent icon)
+                    .child(Skeleton::new().size(px(16.)).rounded_full().mt_1())
+                    // Message content skeleton (2-3 lines with different widths)
+                    .child(
+                        v_flex()
+                            .w_full()
+                            .gap_2()
+                            .child(Skeleton::new().w(px(300.)).h_4().rounded_md())
+                            .child(Skeleton::new().w(px(250.)).h_4().rounded_md())
+                            .child(Skeleton::new().w(px(200.)).h_4().rounded_md()),
+                    ),
+            )
+    }
+
     /// Render the status bar at the bottom of the conversation panel
     fn render_status_bar(&self, cx: &mut Context<Self>) -> Option<impl IntoElement> {
         let status_info = self.session_status.as_ref()?;
@@ -1177,6 +1201,13 @@ impl Render for ConversationPanel {
                         ),
                     );
                 }
+            }
+        }
+
+        // Add loading skeleton when session is in progress
+        if let Some(status_info) = &self.session_status {
+            if status_info.status == SessionStatus::InProgress {
+                children = children.child(self.render_loading_skeleton(cx));
             }
         }
 
