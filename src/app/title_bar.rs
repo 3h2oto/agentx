@@ -3,7 +3,7 @@ use std::rc::Rc;
 use gpui::{
     AnyElement, App, AppContext, Context, Corner, Entity, FocusHandle, InteractiveElement as _,
     IntoElement, MouseButton, ParentElement as _, Render, SharedString, Styled as _, Subscription,
-    Window, actions, div, px,
+    Window, actions, div, prelude::FluentBuilder, px,
 };
 use gpui_component::{
     ActiveTheme as _, IconName, PixelsExt, Sizable as _, Theme, TitleBar, WindowExt as _,
@@ -75,7 +75,14 @@ impl Render for AppTitleBar {
             .child(
                 TitleBar::new()
                     // left side
-                    .child(div().flex().items_center().child(self.app_menu_bar.clone()))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .when(!cfg!(target_os = "macos"), |this| {
+                                this.child(self.app_menu_bar.clone())
+                            }),
+                    )
                     .child(
                         div()
                             .flex()
