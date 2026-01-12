@@ -30,7 +30,7 @@ use crate::core::{event_bus::WorkspaceUpdateEvent, services::SessionStatus};
 use crate::panels::dock_panel::DockPanel;
 use crate::schemas::workspace_schema::WorkspaceTask;
 use crate::{
-    AddPanel, AddSessionPanel, AppState, ShowConversationPanel, ShowWelcomePanel, StatusIndicator,
+    AddPanel, AddSessionPanel, AddTerminalPanel, AppState, ShowConversationPanel, ShowWelcomePanel, StatusIndicator,
     utils,
 };
 
@@ -1083,10 +1083,22 @@ impl TaskPanel {
                                 .ghost()
                                 .xsmall()
                                 .dropdown_menu(
-                                    move |menu, _, _| {
+                                    move |menu, window, _| {
                                         let workspace_id = workspace_id.clone();
                                         let entity = entity.clone();
                                         menu.item(
+                                            PopupMenuItem::new(
+                                                t!("task_panel.workspace.open_terminal").to_string(),
+                                            )
+                                            .icon(IconName::SquareTerminal)
+                                            .on_click(
+                                                move |_, window, cx| {
+                                                    window.dispatch_action(Box::new(AddTerminalPanel::default()), cx);
+                                                },
+                                            ),
+                                        )
+                                        .separator()
+                                        .item(
                                             PopupMenuItem::new(
                                                 t!("task_panel.workspace.remove").to_string(),
                                             )

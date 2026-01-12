@@ -213,6 +213,29 @@ actions!(
     ]
 );
 
+/// 添加终端面板到底部 Dock 区域
+///
+/// 用于创建并添加一个新的终端面板到工作区底部
+#[derive(Action, Clone, PartialEq, Eq, Deserialize)]
+#[action(namespace = story, no_json)]
+pub struct AddTerminalPanel {
+    /// 面板放置位置，默认为 Bottom
+    #[serde(skip, default = "default_bottom_placement")]
+    pub placement: DockPlacement,
+}
+
+fn default_bottom_placement() -> DockPlacement {
+    DockPlacement::Bottom
+}
+
+impl Default for AddTerminalPanel {
+    fn default() -> Self {
+        Self {
+            placement: DockPlacement::Bottom,
+        }
+    }
+}
+
 /// 显示欢迎面板
 ///
 /// 可选参数:

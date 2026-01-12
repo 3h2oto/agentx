@@ -38,7 +38,7 @@ pub use core::{
 pub use app::app_state::{AppState, WelcomeSession};
 pub use app::{
     actions::{
-        About, AddAgent, AddPanel, AddSessionPanel, AddSessionToList, CancelSession, CloseWindow,
+        About, AddAgent, AddPanel, AddSessionPanel, AddSessionToList, AddTerminalPanel, CancelSession, CloseWindow,
         CreateTaskFromWelcome, Info, NewSessionConversationPanel, Open, Quit, ReloadAgentConfig,
         RemoveAgent, RestartAgent, SelectFont, SelectLocale, SelectRadius, SelectScrollbarShow,
         SelectedAgentTask, SendMessageToSession, SetUploadDir, ShowConversationPanel,

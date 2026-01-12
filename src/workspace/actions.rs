@@ -405,6 +405,20 @@ impl DockWorkspace {
         });
     }
 
+    /// Handle AddTerminalPanel action - add a terminal panel to the dock area
+    pub(super) fn on_action_add_terminal_panel(
+        &mut self,
+        action: &crate::AddTerminalPanel,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let panel = Arc::new(DockPanelContainer::panel::<crate::TerminalPanel>(window, cx));
+
+        self.dock_area.update(cx, |dock_area, cx| {
+            dock_area.add_panel(panel, action.placement, None, window, cx);
+        });
+    }
+
     /// Handle TogglePanelVisible action - show/hide panels in the UI
     pub(super) fn on_action_toggle_panel_visible(
         &mut self,
