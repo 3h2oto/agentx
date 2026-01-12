@@ -8,14 +8,14 @@ use gpui::{
 };
 
 use gpui_component::{
-    ActiveTheme, Icon, IconName, Sizable,
+    ActiveTheme, Colorize, Icon, IconName, Sizable,
     button::{Button, ButtonVariants},
     h_flex, v_flex,
 };
 
 use gpui_term::{
     Clear, Copy, Event, InputOrigin, Paste, SelectAll, Terminal, TerminalBuilder, TerminalConfig,
-    TerminalContent, TerminalMiddleware, TerminalView, TextStyle,
+    TerminalContent, TerminalMiddleware, TerminalTheme, TerminalView, TextStyle,
 };
 
 use crate::panels::dock_panel::DockPanel;
@@ -129,7 +129,11 @@ impl TerminalPanel {
                         });
 
                         let terminal_view = cx.new(|cx| {
-                            TerminalView::new_with_style(terminal.clone(), text_style, window, cx)
+                            let mut view =
+                                TerminalView::new_with_style(terminal.clone(), text_style, window, cx);
+                            view.apply_component_theme(cx);
+                            view.observe_component_theme(cx);
+                            view
                         });
 
                         this.terminal = Some(terminal);
@@ -436,5 +440,91 @@ impl TerminalMiddleware for LoggingMiddleware {
 
     fn on_output(&self, _content: &TerminalContent) {
         // Don't log output to avoid spam
+    }
+}
+
+struct ThemeAdapter;
+
+impl ThemeAdapter {
+    fn to_terminal_theme(component_theme: &gpui_component::ThemeColor) -> TerminalTheme {
+        let fg = component_theme.foreground;
+        let bg = component_theme.background;
+        let cursor = component_theme.caret;
+        let selection = component_theme.selection;
+
+        let ansi = [
+            bg.lighten(0.1),
+            component_theme.red,
+            component_theme.green,
+            component_theme.yellow,
+            component_theme.blue,
+            component_theme.magenta,
+            component_theme.cyan,
+            fg,
+        ];
+
+        let bright = [
+            ansi[0].lighten(0.2),
+            component_theme.red_light,
+            component_theme.green_light,
+            component_theme.yellow_light,
+            component_theme.blue_light,
+            component_theme.magenta_light,
+            component_theme.cyan_light,
+            fg.lighten(0.2),
+        ];
+
+        let dim = [
+            ansi[0].darken(0.2),
+            ansi[1].darken(0.2),
+            ansi[2].darken(0.2),
+            ansi[3].darken(0.2),
+            ansi[4].darken(0.2),
+            ansi[5].darken(0.2),
+            ansi[6].darken(0.2),
+            ansi[7].darken(0.2),
+        ];
+
+        TerminalTheme {
+            foreground: fg,
+            background: bg,
+            cursor,
+            selection,
+            ansi,
+            bright,
+            dim,
+            bright_foreground: bright[7],
+            dim_foreground: dim[7],
+        }
+    }
+}
+
+trait ComponentThemeExt {
+    fn apply_component_theme(&mut self, cx: &mut gpui::Context<Self>)
+    where
+        Self: Sized;
+
+    fn observe_component_theme(&mut self, cx: &mut gpui::Context<Self>)
+    where
+        Self: Sized;
+}
+
+impl ComponentThemeExt for TerminalView {
+    fn apply_component_theme(&mut self, cx: &mut gpui::Context<Self>) {
+        let terminal_theme = ThemeAdapter::to_terminal_theme(&cx.theme().colors);
+        let text_style = self.text_style_mut();
+
+        text_style.theme = terminal_theme.clone();
+        text_style.foreground = terminal_theme.foreground;
+        text_style.background = terminal_theme.background;
+
+        cx.notify();
+    }
+
+    fn observe_component_theme(&mut self, cx: &mut gpui::Context<Self>) {
+        cx.observe_global::<gpui_component::Theme>(|this, cx| {
+            this.apply_component_theme(cx);
+        })
+        .detach();
     }
 }
