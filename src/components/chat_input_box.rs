@@ -6,7 +6,7 @@ use std::{rc::Rc, sync::Arc};
 
 use gpui_component::{
     ActiveTheme, Disableable, Icon, IconName, Sizable,
-    button::{Button, ButtonCustomVariant},
+    button::{Button, ButtonCustomVariant, ButtonVariants},
     h_flex,
     input::{Input, InputState},
     popover::Popover,

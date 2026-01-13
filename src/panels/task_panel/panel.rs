@@ -919,7 +919,7 @@ impl TaskPanel {
             .justify_between()
             .items_center()
             .px_3()
-            .py_2()
+            .h(px(29.))
             .border_t_1()
             .border_color(theme.border)
             .child(
