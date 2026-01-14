@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use std::sync::Arc;
 use tray_icon::{
-    TrayIcon, TrayIconBuilder, TrayIconEvent,
+    TrayIcon, TrayIconBuilder, TrayIconEvent, MouseButton,
     menu::{Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem},
 };
 
@@ -45,8 +45,10 @@ impl SystemTray {
         let icon = load_icon()?;
 
         // 创建托盘图标
+        // 注意：菜单只在右键点击时显示，左键点击不显示菜单
         let tray_icon = TrayIconBuilder::new()
             .with_menu(Box::new(tray_menu))
+            .with_menu_on_left_click(false)  // 禁用左键显示菜单
             .with_tooltip("AgentX Studio")
             .with_icon(icon)
             .build()
@@ -111,23 +113,31 @@ pub fn setup_tray_event_handler(tray: SystemTray, cx: &mut gpui::App) {
     // 在独立线程中轮询托盘事件
     std::thread::spawn(move || {
         loop {
+            let mut has_event = false;
+
             // 轮询托盘图标点击事件
             if let Ok(event) = tray_icon_event_receiver.try_recv() {
+                has_event = true;
                 match event {
-                    TrayIconEvent::Click { .. } => {
-                        // 左键点击托盘图标 - 显示窗口
-                        log::info!("Tray icon clicked, showing window");
-                        if tx.send(TrayEvent::Show).is_err() {
-                            log::error!("Failed to send tray event, receiver dropped");
-                            break;
+                    TrayIconEvent::Click { button, .. } => {
+                        // 只处理左键点击 - 显示窗口
+                        // 右键点击会自动显示菜单，不需要额外处理
+                        if button == MouseButton::Left {
+                            log::info!("Tray icon left-clicked, showing window");
+                            if tx.send(TrayEvent::Show).is_err() {
+                                log::error!("Failed to send tray event, receiver dropped");
+                                break;
+                            }
                         }
                     }
-                    TrayIconEvent::DoubleClick { .. } => {
-                        // 双击托盘图标 - 也显示窗口
-                        log::info!("Tray icon double-clicked, showing window");
-                        if tx.send(TrayEvent::Show).is_err() {
-                            log::error!("Failed to send tray event, receiver dropped");
-                            break;
+                    TrayIconEvent::DoubleClick { button, .. } => {
+                        // 只处理左键双击 - 也显示窗口
+                        if button == MouseButton::Left {
+                            log::info!("Tray icon double-clicked, showing window");
+                            if tx.send(TrayEvent::Show).is_err() {
+                                log::error!("Failed to send tray event, receiver dropped");
+                                break;
+                            }
                         }
                     }
                     _ => {
@@ -138,6 +148,7 @@ pub fn setup_tray_event_handler(tray: SystemTray, cx: &mut gpui::App) {
 
             // 轮询菜单事件
             if let Ok(event) = menu_event_receiver.try_recv() {
+                has_event = true;
                 let menu_id = event.id();
 
                 // 根据菜单ID判断操作
@@ -163,8 +174,10 @@ pub fn setup_tray_event_handler(tray: SystemTray, cx: &mut gpui::App) {
                 }
             }
 
-            // 避免忙等待
-            std::thread::sleep(std::time::Duration::from_millis(100));
+            // 如果没有事件，休眠以避免忙等待；如果有事件，立即继续轮询
+            if !has_event {
+                std::thread::sleep(std::time::Duration::from_millis(16));  // 约60fps的轮询频率
+            }
         }
     });
 
