@@ -82,72 +82,73 @@ impl DockWorkspace {
         .detach();
 
         let title_bar = cx.new(|cx| {
-            AppTitleBar::new("Agent Studio", window, cx).child({
-                move |_, cx| {
-                    Button::new("add-panel")
-                        .icon(IconName::LayoutDashboard)
-                        .small()
-                        .ghost()
-                        .dropdown_menu({
-                            let invisible_panels = AppState::global(cx).invisible_panels.clone();
+            AppTitleBar::new("Agent Studio", window, cx)
+            // .child({
+            //     move |_, cx| {
+            //         Button::new("add-panel")
+            //             .icon(IconName::LayoutDashboard)
+            //             .small()
+            //             .ghost()
+            //             .dropdown_menu({
+            //                 let invisible_panels = AppState::global(cx).invisible_panels.clone();
 
-                            move |menu, _, cx| {
-                                menu.menu(
-                                    "Add Panel to Center",
-                                    Box::new(PanelAction::add_conversation(DockPlacement::Center)),
-                                )
-                                .separator()
-                                .menu(
-                                    "Add Panel to Left",
-                                    Box::new(PanelAction::add_conversation(DockPlacement::Left)),
-                                )
-                                .menu(
-                                    "Add Panel to Right",
-                                    Box::new(PanelAction::add_conversation(DockPlacement::Right)),
-                                )
-                                .menu(
-                                    "Add Panel to Bottom",
-                                    Box::new(PanelAction::add_conversation(DockPlacement::Bottom)),
-                                )
-                                .separator()
-                                .menu(
-                                    "Show / Hide Dock Toggle Button",
-                                    Box::new(ToggleDockToggleButton),
-                                )
-                                .separator()
-                                .menu_with_check(
-                                    "Sidebar",
-                                    !invisible_panels
-                                        .read(cx)
-                                        .contains(&SharedString::from("Sidebar")),
-                                    Box::new(TogglePanelVisible(SharedString::from("Sidebar"))),
-                                )
-                                .menu_with_check(
-                                    "Dialog",
-                                    !invisible_panels
-                                        .read(cx)
-                                        .contains(&SharedString::from("Dialog")),
-                                    Box::new(TogglePanelVisible(SharedString::from("Dialog"))),
-                                )
-                                .menu_with_check(
-                                    "Accordion",
-                                    !invisible_panels
-                                        .read(cx)
-                                        .contains(&SharedString::from("Accordion")),
-                                    Box::new(TogglePanelVisible(SharedString::from("Accordion"))),
-                                )
-                                .menu_with_check(
-                                    "List",
-                                    !invisible_panels
-                                        .read(cx)
-                                        .contains(&SharedString::from("List")),
-                                    Box::new(TogglePanelVisible(SharedString::from("List"))),
-                                )
-                            }
-                        })
-                        .anchor(Corner::TopRight)
-                }
-            })
+            //                 move |menu, _, cx| {
+            //                     menu.menu(
+            //                         "Add Panel to Center",
+            //                         Box::new(PanelAction::add_conversation(DockPlacement::Center)),
+            //                     )
+            //                     .separator()
+            //                     .menu(
+            //                         "Add Panel to Left",
+            //                         Box::new(PanelAction::add_conversation(DockPlacement::Left)),
+            //                     )
+            //                     .menu(
+            //                         "Add Panel to Right",
+            //                         Box::new(PanelAction::add_conversation(DockPlacement::Right)),
+            //                     )
+            //                     .menu(
+            //                         "Add Panel to Bottom",
+            //                         Box::new(PanelAction::add_conversation(DockPlacement::Bottom)),
+            //                     )
+            //                     .separator()
+            //                     .menu(
+            //                         "Show / Hide Dock Toggle Button",
+            //                         Box::new(ToggleDockToggleButton),
+            //                     )
+            //                     .separator()
+            //                     .menu_with_check(
+            //                         "Sidebar",
+            //                         !invisible_panels
+            //                             .read(cx)
+            //                             .contains(&SharedString::from("Sidebar")),
+            //                         Box::new(TogglePanelVisible(SharedString::from("Sidebar"))),
+            //                     )
+            //                     .menu_with_check(
+            //                         "Dialog",
+            //                         !invisible_panels
+            //                             .read(cx)
+            //                             .contains(&SharedString::from("Dialog")),
+            //                         Box::new(TogglePanelVisible(SharedString::from("Dialog"))),
+            //                     )
+            //                     .menu_with_check(
+            //                         "Accordion",
+            //                         !invisible_panels
+            //                             .read(cx)
+            //                             .contains(&SharedString::from("Accordion")),
+            //                         Box::new(TogglePanelVisible(SharedString::from("Accordion"))),
+            //                     )
+            //                     .menu_with_check(
+            //                         "List",
+            //                         !invisible_panels
+            //                             .read(cx)
+            //                             .contains(&SharedString::from("List")),
+            //                         Box::new(TogglePanelVisible(SharedString::from("List"))),
+            //                     )
+            //                 }
+            //             })
+            //             .anchor(Corner::TopRight)
+            //     }
+            // })
         });
 
         Self {

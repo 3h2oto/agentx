@@ -673,14 +673,14 @@ impl Panel for DockPanelContainer {
         }
     }
 
-    fn dropdown_menu(
-        &mut self,
-        menu: PopupMenu,
-        _window: &mut gpui::Window,
-        _cx: &mut gpui::Context<'_, DockPanelContainer>,
-    ) -> PopupMenu {
-        menu.menu("Info", Box::new(ShowPanelInfo))
-    }
+    // fn dropdown_menu(
+    //     &mut self,
+    //     menu: PopupMenu,
+    //     _window: &mut gpui::Window,
+    //     _cx: &mut gpui::Context<'_, DockPanelContainer>,
+    // ) -> PopupMenu {
+    //     menu.menu("Info", Box::new(ShowPanelInfo))
+    // }
 
     fn toolbar_buttons(
         &mut self,
@@ -688,16 +688,16 @@ impl Panel for DockPanelContainer {
         _cx: &mut gpui::Context<'_, DockPanelContainer>,
     ) -> Option<Vec<Button>> {
         Some(vec![
-            Button::new("info")
-                .icon(IconName::Info)
-                .on_click(|_, window, cx| {
-                    window.push_notification("You have clicked info button", cx);
-                }),
-            Button::new("search")
-                .icon(IconName::Search)
-                .on_click(|_, window, cx| {
-                    window.push_notification("You have clicked search button", cx);
-                }),
+            // Button::new("info")
+            //     .icon(IconName::Info)
+            //     .on_click(|_, window, cx| {
+            //         window.push_notification("You have clicked info button", cx);
+            //     }),
+            // Button::new("search")
+            //     .icon(IconName::Search)
+            //     .on_click(|_, window, cx| {
+            //         window.push_notification("You have clicked search button", cx);
+            //     }),
         ])
     }
 
@@ -785,8 +785,8 @@ impl Render for DockPanelContainer {
             .size_full()
             .p(self.paddings)
             .track_focus(&self.focus_handle)
-            .on_action(cx.listener(Self::on_action_panel_info))
-            .on_action(cx.listener(Self::on_action_toggle_search))
+            // .on_action(cx.listener(Self::on_action_panel_info))
+            // .on_action(cx.listener(Self::on_action_toggle_search))
             .when_some(self.story.clone(), |this, story| this.child(story))
     }
 }

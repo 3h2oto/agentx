@@ -74,6 +74,8 @@ pub struct TaskPanel {
     last_click_task_id: Option<String>,
     /// Loading state indicator
     is_loading: bool,
+    /// Optional callback for custom item focus handling
+    on_item_focus: Option<Box<dyn Fn(&str, &mut Window, &mut Context<Self>)>>,
 }
 
 impl DockPanel for TaskPanel {
@@ -134,7 +136,18 @@ impl TaskPanel {
             pending_click_generation: 0,
             last_click_task_id: None,
             is_loading: false,
+            on_item_focus: None,
         }
+    }
+
+    /// Set a custom callback for handling item focus
+    /// This allows external code to control the selection behavior
+    pub fn on_item_focus<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(&str, &mut Window, &mut Context<Self>) + 'static,
+    {
+        self.on_item_focus = Some(Box::new(callback));
+        self
     }
 
     // ========================================================================
@@ -710,6 +723,17 @@ impl TaskPanel {
         cx.notify();
     }
 
+    /// Manually set the selected task (for external control)
+    pub fn set_selected_task(&mut self, task_id: Option<String>, cx: &mut Context<Self>) {
+        self.selected_task_id = task_id;
+        cx.notify();
+    }
+
+    /// Get the currently selected task ID
+    pub fn selected_task(&self) -> Option<&str> {
+        self.selected_task_id.as_deref()
+    }
+
     fn set_view_mode(&mut self, mode: ViewMode, cx: &mut Context<Self>) {
         self.view_mode = mode;
         cx.notify();
@@ -796,6 +820,13 @@ impl TaskPanel {
         self.last_click_task_id = Some(task_id.clone());
 
         self.select_task(task_id.clone(), cx);
+
+        // Call custom focus handler if provided
+        if let Some(callback) = self.on_item_focus.take() {
+            callback(&task_id, window, cx);
+            self.on_item_focus = Some(callback);
+            return; // Let the custom handler decide what to do
+        }
 
         if click_count >= 2 && is_same_task {
             self.pending_click_generation = self.pending_click_generation.wrapping_add(1);
