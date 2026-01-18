@@ -92,11 +92,11 @@ impl CodeEditorPanel {
                 .placeholder("Enter your code here...");
 
             let lsp_store = Rc::new(lsp_store.clone());
-            editor.lsp.completion_provider = Some(lsp_store.clone());
+            // editor.lsp.completion_provider = Some(lsp_store.clone());
             editor.lsp.code_action_providers = vec![lsp_store.clone(), Rc::new(TextConvertor)];
-            editor.lsp.hover_provider = Some(lsp_store.clone());
-            editor.lsp.definition_provider = Some(lsp_store.clone());
-            editor.lsp.document_color_provider = Some(lsp_store.clone());
+            // editor.lsp.hover_provider = Some(lsp_store.clone());
+            // editor.lsp.definition_provider = Some(lsp_store.clone());
+            // editor.lsp.document_color_provider = Some(lsp_store.clone());
 
             editor
         });
@@ -619,16 +619,16 @@ impl Render for CodeEditorPanel {
         use gpui_component::input::RopeExt;
 
         // Update diagnostics
-        if self.lsp_store.is_dirty() {
-            let diagnostics = self.lsp_store.diagnostics();
-            self.editor.update(cx, |state, cx| {
-                state.diagnostics_mut().map(|set| {
-                    set.clear();
-                    set.extend(diagnostics);
-                });
-                cx.notify();
-            });
-        }
+        // if self.lsp_store.is_dirty() {
+        //     let diagnostics = self.lsp_store.diagnostics();
+        //     self.editor.update(cx, |state, cx| {
+        //         state.diagnostics_mut().map(|set| {
+        //             set.clear();
+        //             set.extend(diagnostics);
+        //         });
+        //         cx.notify();
+        //     });
+        // }
 
         // 提取选择范围信息
         let selection_info = self.editor.update(cx, |state, cx| {

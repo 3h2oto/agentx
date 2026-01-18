@@ -1,6 +1,6 @@
 use gpui::{
     App, ClipboardEntry, Context, Entity, FocusHandle, Focusable, IntoElement, ParentElement,
-    Render, ScrollHandle, SharedString, Styled, Timer, Window, div, prelude::*, px,
+    Render, ScrollHandle, SharedString, Styled, Window, div, prelude::*, px,
 };
 
 use gpui_component::{
@@ -12,6 +12,7 @@ use gpui_component::{
 use agent_client_protocol::{ContentChunk, ImageContent, PlanEntryStatus, SessionUpdate, ToolCall};
 use chrono::{DateTime, Utc};
 use rust_i18n::t;
+use smol::Timer;
 use std::time::Duration;
 
 use crate::components::ToolCallItem;
@@ -186,6 +187,9 @@ impl ConversationPanel {
                         if let Some(entity) = weak.upgrade() {
                             entity.update(cx, |this, cx| {
                                 let mut index = this.next_index;
+                                let agent_name = AppState::global(cx)
+                                    .agent_service()
+                                    .and_then(|service| service.get_agent_for_session(&session_id));
                                 for persisted_msg in messages.into_iter() {
                                     log::debug!(
                                         "Loading historical message {}: timestamp={}",
@@ -195,6 +199,8 @@ impl ConversationPanel {
                                     Self::add_update_to_list(
                                         &mut this.rendered_items,
                                         persisted_msg.update,
+                                        Some(session_id.as_str()),
+                                        agent_name.as_deref(),
                                         index,
                                         cx,
                                     );
@@ -292,11 +298,15 @@ impl ConversationPanel {
                 session_filter_log.as_deref().unwrap_or("all")
             );
 
-            while let Some(update) = rx.recv().await {
+            while let Some(event) = rx.recv().await {
                 log::info!(
                     "Background task received update for session: {}",
                     session_filter_log.as_deref().unwrap_or("all")
                 );
+
+                let session_id = event.session_id.clone();
+                let agent_name = event.agent_name.clone();
+                let update = (*event.update).clone();
 
                 let weak = weak_entity.clone();
                 let _ = cx.update(|cx| {
@@ -305,7 +315,14 @@ impl ConversationPanel {
                             let index = this.next_index;
                             this.next_index += 1;
                             // log::debug!("Processing update type: {:?}", update);
-                            Self::add_update_to_list(&mut this.rendered_items, update, index, cx);
+                            Self::add_update_to_list(
+                                &mut this.rendered_items,
+                                update,
+                                Some(session_id.as_str()),
+                                agent_name.as_deref(),
+                                index,
+                                cx,
+                            );
 
                             cx.notify(); // Trigger re-render immediately
 
@@ -595,6 +612,8 @@ impl ConversationPanel {
     fn add_update_to_list(
         items: &mut Vec<RenderedItem>,
         update: SessionUpdate,
+        session_id: Option<&str>,
+        agent_name: Option<&str>,
         index: usize,
         cx: &mut App,
     ) {
@@ -617,12 +636,32 @@ impl ConversationPanel {
                 items.push(Self::create_user_message(chunk, index, cx));
             }
             SessionUpdate::AgentMessageChunk(chunk) => {
+                let resolved_agent_name = agent_name
+                    .map(str::to_string)
+                    .or_else(|| {
+                        session_id.and_then(|session_id| {
+                            AppState::global(cx)
+                                .agent_service()
+                                .and_then(|service| service.get_agent_for_session(session_id))
+                        })
+                    });
+
                 // Try to merge with the last AgentMessage item
                 let merged = items
                     .last_mut()
                     .map(|last_item| {
                         if last_item.can_accept_agent_message_chunk() {
-                            last_item.try_append_agent_message_chunk(chunk.clone())
+                            let merged = last_item.try_append_agent_message_chunk(chunk.clone());
+                            if merged {
+                                if let (Some(name), RenderedItem::AgentMessage(_, data)) =
+                                    (resolved_agent_name.as_deref(), last_item)
+                                {
+                                    if data.meta.agent_name.is_none() {
+                                        data.meta.agent_name = Some(name.to_string());
+                                    }
+                                }
+                            }
+                            merged
                         } else {
                             // Different type, mark the last item as complete
                             last_item.mark_complete();
@@ -635,7 +674,11 @@ impl ConversationPanel {
                     log::debug!("  └─ Merged AgentMessageChunk into existing message");
                 } else {
                     log::debug!("  └─ Creating new AgentMessage");
-                    let data = create_agent_message_data(chunk, index);
+                    let data = create_agent_message_data(
+                        chunk,
+                        session_id,
+                        resolved_agent_name.as_deref(),
+                    );
                     items.push(RenderedItem::AgentMessage(
                         format!("agent-msg-{}", index),
                         data,

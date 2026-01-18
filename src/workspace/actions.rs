@@ -75,8 +75,8 @@ impl DockWorkspace {
         }
 
         self.dock_area.update(cx, |dock_area, cx| {
-            let selection = Self::find_focused_tab_panel(dock_area.items(), window, cx)
-                .or_else(|| Self::find_first_tab_panel(dock_area.items(), cx));
+            let selection = Self::find_focused_tab_panel(dock_area.center(), window, cx)
+                .or_else(|| Self::find_first_tab_panel(dock_area.center(), cx));
 
             if let Some((_, active_panel)) = selection {
                 if let Ok(container) = active_panel.view().downcast::<DockPanelContainer>() {
@@ -182,7 +182,7 @@ impl DockWorkspace {
             "Searching existing session panel: session_id={}",
             session_id
         );
-        let items = self.dock_area.read(cx).items().clone();
+        let items = self.dock_area.read(cx).center().clone();
         let found = Self::activate_session_in_item(&items, session_id, window, cx);
         if found {
             log::debug!(

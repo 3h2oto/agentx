@@ -6,6 +6,7 @@ use gpui_component::{
     dock::{DockArea, DockAreaState, DockEvent, DockItem, DockPlacement},
     menu::DropdownMenu,
 };
+use smol::Timer;
 use std::{sync::Arc, time::Duration};
 
 use crate::{

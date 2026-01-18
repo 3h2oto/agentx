@@ -21,6 +21,7 @@ use gpui_component::{
     v_flex,
 };
 use rust_i18n::t;
+use smol::Timer;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
@@ -790,7 +791,7 @@ impl TaskPanel {
 
         cx.spawn_in(window, async move |entity, cx| {
             // Delay single-click handling to allow double-click to preempt it.
-            gpui::Timer::after(Duration::from_millis(250)).await;
+            Timer::after(Duration::from_millis(250)).await;
             let _ = cx.update(|window, cx| {
                 let Some(entity) = entity.upgrade() else {
                     return;
