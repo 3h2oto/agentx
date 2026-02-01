@@ -28,6 +28,7 @@ pub struct SettingsPanel {
     pub(super) cached_mcp_servers: HashMap<String, McpServerConfig>,
     pub(super) cached_commands: HashMap<String, CommandConfig>,
     pub(super) cached_upload_dir: PathBuf,
+    pub(super) cached_proxy: crate::core::config::ProxyConfig,
     // JSON editor state for MCP servers
     pub(super) mcp_json_editor: Entity<InputState>,
     pub(super) mcp_json_error: Option<String>,
@@ -97,6 +98,7 @@ impl SettingsPanel {
             cached_mcp_servers: HashMap::new(),
             cached_commands: HashMap::new(),
             cached_upload_dir: PathBuf::from("."),
+            cached_proxy: crate::core::config::ProxyConfig::default(),
             mcp_json_editor,
             mcp_json_error: None,
             mcp_active_tab: 0,
@@ -116,6 +118,7 @@ impl SettingsPanel {
                 let mcp_servers = service.list_mcp_servers().await;
                 let commands = service.list_commands().await;
                 let upload_dir = service.get_upload_dir().await;
+                let proxy = service.proxy_config();
 
                 _ = window.update(|window, cx| {
                     if let Some(entity) = weak_entity.upgrade() {
@@ -125,6 +128,7 @@ impl SettingsPanel {
                             this.cached_mcp_servers = mcp_servers.into_iter().collect();
                             this.cached_commands = commands.into_iter().collect();
                             this.cached_upload_dir = upload_dir;
+                            this.cached_proxy = proxy;
                             // Load system prompts into input fields
                             this.load_system_prompts(window, cx);
                             cx.notify();
@@ -225,6 +229,7 @@ impl SettingsPanel {
                 self.cached_mcp_servers = config.mcp_servers.clone();
                 self.cached_commands = config.commands.clone();
                 self.cached_upload_dir = config.upload_dir.clone();
+                self.cached_proxy = config.proxy.clone();
             }
         }
 

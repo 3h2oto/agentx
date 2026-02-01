@@ -77,6 +77,11 @@ impl AgentConfigService {
         config.upload_dir.clone()
     }
 
+    /// Get proxy configuration (sync)
+    pub fn proxy_config(&self) -> crate::core::config::ProxyConfig {
+        self.config.blocking_read().proxy.clone()
+    }
+
     /// Get the config file path
     pub fn config_path(&self) -> &PathBuf {
         &self.config_path
