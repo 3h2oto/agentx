@@ -112,10 +112,7 @@ async fn fetch_latest_release(check_url: &str, timeout: Duration) -> Result<Upda
         .await?;
 
     if !response.status().is_success() {
-        return Err(anyhow!(
-            "GitHub API returned status: {}",
-            response.status()
-        ));
+        return Err(anyhow!("GitHub API returned status: {}", response.status()));
     }
 
     let body = response.text().await?;

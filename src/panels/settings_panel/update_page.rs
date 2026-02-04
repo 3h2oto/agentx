@@ -61,9 +61,11 @@ fn os_version() -> String {
         std::fs::read_to_string("/etc/os-release")
             .ok()
             .and_then(|c| {
-                c.lines()
-                    .find(|l| l.starts_with("VERSION_ID="))
-                    .map(|l| l.trim_start_matches("VERSION_ID=").trim_matches('"').to_string())
+                c.lines().find(|l| l.starts_with("VERSION_ID=")).map(|l| {
+                    l.trim_start_matches("VERSION_ID=")
+                        .trim_matches('"')
+                        .to_string()
+                })
             })
             .unwrap_or_else(|| "Unknown".into())
     }
@@ -218,10 +220,8 @@ impl SettingsPanel {
                                         .items_center()
                                         .child(Icon::new(IconName::Settings).size_4())
                                         .child(
-                                            Label::new(
-                                                t!("settings.update.system.os").to_string(),
-                                            )
-                                            .text_sm(),
+                                            Label::new(t!("settings.update.system.os").to_string())
+                                                .text_sm(),
                                         )
                                         .child(
                                             Label::new(&os)

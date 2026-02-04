@@ -1,7 +1,9 @@
 use anyhow::{Context as _, Result};
 use gpui::*;
 use gpui_component::Root;
-use gpui_component::dock::{DockArea, DockAreaState, DockEvent, DockItem, DockPlacement, PanelState};
+use gpui_component::dock::{
+    DockArea, DockAreaState, DockEvent, DockItem, DockPlacement, PanelState,
+};
 use smol::Timer;
 use std::{sync::Arc, time::Duration};
 

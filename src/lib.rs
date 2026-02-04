@@ -40,10 +40,11 @@ pub use app::app_state::{AppState, WelcomeSession};
 pub use app::{
     actions::{
         About, AddAgent, AddSessionToList, CancelSession, CloseWindow, CreateTaskFromWelcome, Info,
-        NewSessionConversationPanel, Open, OpenSessionManager, PanelAction, Quit, ReloadAgentConfig,
-        RemoveAgent, RestartAgent, SelectFont, SelectLocale, SelectRadius, SelectScrollbarShow,
-        SelectedAgentTask, SendMessageToSession, SetUploadDir, ShowPanelInfo, Tab, TabPrev,
-        TestAction, ToggleDockToggleButton, TogglePanelVisible, ToggleSearch, UpdateAgent,
+        NewSessionConversationPanel, Open, OpenSessionManager, PanelAction, Quit,
+        ReloadAgentConfig, RemoveAgent, RestartAgent, SelectFont, SelectLocale, SelectRadius,
+        SelectScrollbarShow, SelectedAgentTask, SendMessageToSession, SetUploadDir, ShowPanelInfo,
+        Tab, TabPrev, TestAction, ToggleDockToggleButton, TogglePanelVisible, ToggleSearch,
+        UpdateAgent,
     },
     app_menus, menu, system_tray, themes, title_bar,
 };
