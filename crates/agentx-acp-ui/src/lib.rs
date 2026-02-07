@@ -1,7 +1,9 @@
 mod agent_message;
+mod agent_thought;
 mod agent_todo_list;
 mod diff_summary;
 mod diff_view;
+mod message_stream;
 mod permission_request;
 mod tool_call_item;
 mod user_message;
@@ -11,11 +13,13 @@ pub use agent_message::{
     AgentIconProvider, AgentMessage, AgentMessageData, AgentMessageMeta, AgentMessageOptions,
     AgentMessageView,
 };
+pub use agent_thought::AgentThoughtItem;
 pub use agent_todo_list::{AgentTodoList, AgentTodoListView, PlanMeta};
 pub use diff_summary::{
     DiffSummary, DiffSummaryData, DiffSummaryOptions, DiffSummaryToolCallHandler, FileChangeStats,
 };
 pub use diff_view::{DiffDisplayItem, DiffLine, DiffView, DiffViewConfig};
+pub use message_stream::{AcpMessageStream, AcpMessageStreamOptions};
 pub use permission_request::{
     PermissionRequest, PermissionRequestOptions, PermissionRequestView, PermissionResponseHandler,
     permission_is_allow, permission_option_kind_to_icon,

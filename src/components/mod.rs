@@ -8,12 +8,12 @@ mod status_indicator;
 // mod task_list_item;
 // ACP UI components live in the agentx-acp-ui crate.
 pub use agentx_acp_ui::{
-    AgentMessage, AgentMessageData, AgentMessageMeta, AgentMessageOptions, AgentMessageView,
-    AgentTodoList, AgentTodoListView, DiffSummary, DiffSummaryData, DiffSummaryOptions,
-    DiffSummaryToolCallHandler, DiffView, FileChangeStats, PermissionRequest,
-    PermissionRequestOptions, PermissionRequestView, PermissionResponseHandler, PlanMeta,
-    ToolCallItem, ToolCallItemOptions, ToolCallItemView, UserMessage, UserMessageData,
-    UserMessageView,
+    AcpMessageStream, AcpMessageStreamOptions, AgentMessage, AgentMessageData, AgentMessageMeta,
+    AgentMessageOptions, AgentMessageView, AgentThoughtItem, AgentTodoList, AgentTodoListView,
+    DiffSummary, DiffSummaryData, DiffSummaryOptions, DiffSummaryToolCallHandler, DiffView,
+    FileChangeStats, PermissionRequest, PermissionRequestOptions, PermissionRequestView,
+    PermissionResponseHandler, PlanMeta, ToolCallItem, ToolCallItemOptions, ToolCallItemView,
+    UserMessage, UserMessageData, UserMessageView,
 };
 
 pub use agent_select::AgentItem;

@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
 use agent_client_protocol::{
-    ContentBlock, Diff, PermissionOption, PermissionOptionKind, Plan, PlanEntry, PlanEntryPriority,
-    PlanEntryStatus, SessionId, ToolCall, ToolCallContent, ToolCallStatus, ToolCallUpdate,
-    ToolCallUpdateFields, ToolKind,
+    ContentBlock, ContentChunk, Diff, PermissionOption, PermissionOptionKind, Plan, PlanEntry,
+    PlanEntryPriority, PlanEntryStatus, SessionId, SessionUpdate, ToolCall, ToolCallContent,
+    ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind,
 };
 use agentx_acp_ui::{
-    AgentMessageData, AgentMessageOptions, AgentMessageView, AgentTodoListView, DiffSummary,
-    DiffSummaryData, DiffSummaryOptions, DiffView, PermissionRequest, PermissionRequestOptions,
-    ToolCallItem, ToolCallItemOptions, UserMessageData, UserMessageView,
+    AcpMessageStream, AcpMessageStreamOptions, AgentMessageData, AgentMessageOptions,
+    AgentMessageView, AgentTodoListView, DiffSummary, DiffSummaryData, DiffSummaryOptions, DiffView,
+    PermissionRequest, PermissionRequestOptions, ToolCallItem, ToolCallItemOptions, UserMessageData,
+    UserMessageView,
 };
 use gpui::{
     App, AppContext, Context, Entity, IntoElement, ParentElement, Render, RenderOnce, SharedString,
@@ -33,6 +34,7 @@ fn section(title: impl Into<SharedString>) -> GroupBox {
 }
 
 pub struct AcpUiStory {
+    message_stream: Entity<AcpMessageStream>,
     agent_message: Entity<AgentMessageView>,
     user_message: Entity<UserMessageView>,
     todo_list: Entity<AgentTodoListView>,
@@ -45,6 +47,7 @@ pub struct AcpUiStory {
 impl AcpUiStory {
     pub fn view(window: &mut Window, cx: &mut App) -> Entity<Self> {
         let session_id = SessionId::from("story-session");
+        let session_id_str = "story-session";
 
         let agent_message_data = AgentMessageData::new(session_id.clone())
             .with_agent_name("AgentX")
@@ -86,6 +89,7 @@ impl AcpUiStory {
         ]);
         plan.meta = plan_meta.as_object().cloned();
 
+        let plan_for_stream = plan.clone();
         let todo_list = AgentTodoListView::with_plan(plan, window, cx);
 
         let diff_main = Diff::new(
@@ -115,6 +119,7 @@ impl AcpUiStory {
                 log::info!("Open tool call detail: {}", tool_call.tool_call_id);
             }));
 
+        let tool_call_for_stream = tool_call.clone();
         let tool_call_item = cx.new(|_| ToolCallItem::with_options(tool_call, tool_call_options));
 
         let diff_other = Diff::new("README.md", "# AgentX\nUpdated".to_string())
@@ -164,7 +169,49 @@ impl AcpUiStory {
             )
         });
 
+        let message_stream = cx.new(|_| AcpMessageStream::with_options(AcpMessageStreamOptions::default()));
+        message_stream.update(cx, |stream, cx| {
+            stream.process_update(
+                SessionUpdate::UserMessageChunk(ContentChunk::new(ContentBlock::from(
+                    "Please update the config and summarize changes.",
+                ))),
+                Some(session_id_str),
+                Some("AgentX"),
+                cx,
+            );
+            stream.process_update(
+                SessionUpdate::AgentThoughtChunk(ContentChunk::new(ContentBlock::from(
+                    "Reviewing config options...",
+                ))),
+                Some(session_id_str),
+                Some("AgentX"),
+                cx,
+            );
+            stream.process_update(
+                SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::from(
+                    "Here is a **markdown** response with a list:\\n- First item\\n- Second item",
+                ))),
+                Some(session_id_str),
+                Some("AgentX"),
+                cx,
+            );
+            stream.process_update(
+                SessionUpdate::Plan(plan_for_stream.clone()),
+                Some(session_id_str),
+                Some("AgentX"),
+                cx,
+            );
+            stream.process_update(
+                SessionUpdate::ToolCall(tool_call_for_stream.clone()),
+                Some(session_id_str),
+                Some("AgentX"),
+                cx,
+            );
+            stream.add_diff_summary_if_needed(cx);
+        });
+
         cx.new(|_| Self {
+            message_stream,
             agent_message,
             user_message,
             todo_list,
@@ -182,6 +229,7 @@ impl Render for AcpUiStory {
             div().size_full().overflow_y_scrollbar().p_6().child(
                 v_flex()
                     .gap_6()
+                    .child(section!("Message Stream").child(self.message_stream.clone()))
                     .child(section!("Agent Message").child(self.agent_message.clone()))
                     .child(section!("User Message").child(self.user_message.clone()))
                     .child(section!("Plan / Todo List").child(self.todo_list.clone()))

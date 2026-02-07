@@ -56,12 +56,12 @@ pub use title_bar::AppTitleBar;
 
 // Export components
 pub use components::{
-    AgentMessage, AgentMessageData, AgentMessageMeta, AgentMessageOptions, AgentMessageView,
-    AgentTodoList, AgentTodoListView, ChatInputBox, DiffSummary, DiffSummaryData,
-    DiffSummaryOptions, DiffSummaryToolCallHandler, FileChangeStats, PermissionRequest,
-    PermissionRequestOptions, PermissionRequestView, PermissionResponseHandler, PlanMeta,
-    StatusIndicator, ToolCallItem, ToolCallItemOptions, ToolCallItemView, UserMessage,
-    UserMessageData, UserMessageView,
+    AcpMessageStream, AcpMessageStreamOptions, AgentMessage, AgentMessageData, AgentMessageMeta,
+    AgentMessageOptions, AgentMessageView, AgentThoughtItem, AgentTodoList, AgentTodoListView,
+    ChatInputBox, DiffSummary, DiffSummaryData, DiffSummaryOptions, DiffSummaryToolCallHandler,
+    FileChangeStats, PermissionRequest, PermissionRequestOptions, PermissionRequestView,
+    PermissionResponseHandler, PlanMeta, StatusIndicator, ToolCallItem, ToolCallItemOptions,
+    ToolCallItemView, UserMessage, UserMessageData, UserMessageView,
 };
 
 // Re-export ACP types for convenience
