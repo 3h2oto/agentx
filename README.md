@@ -95,7 +95,7 @@ Based on `config.json` in this repository we test the following agents:
         <br />AugmentCode
       </td>
       <td align="center">
-        <img src="assets/logo/Iflow.svg" alt="Iflow" width="48" />
+        <img src="assets/logo/iflow.svg" alt="Iflow" width="48" />
         <br />Iflow
       </td>
     </tr>

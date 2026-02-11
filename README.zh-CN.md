@@ -95,7 +95,7 @@ AgentX 是一个 **GPU 加速**、**跨平台**的桌面应用程序，将 AI �
         <br />AugmentCode
       </td>
       <td align="center">
-        <img src="assets/logo/Iflow.svg" alt="Iflow" width="48" />
+        <img src="assets/logo/iflow.svg" alt="Iflow" width="48" />
         <br />Iflow
       </td>
     </tr>
@@ -276,6 +276,12 @@ cargo fmt
 - 🐦 **分享**给您的朋友和同事
 - 🐛 **报告错误**以帮助我们改进
 - 💡 **建议功能**您希望看到的
+
+<div align="center">
+  <img src="assets/qrcode.jpg" alt="微信公众号" width="200" />
+  <br />
+  <span>关注微信公众号，获取最新动态</span>
+</div>
 
 ---
 
