@@ -1315,6 +1315,7 @@ impl TaskPanel {
                     let task_id = task_id.clone();
                     move |this, _, _, cx| {
                         this.select_task_for_context_menu(task_id.clone(), cx);
+                        cx.stop_propagation();
                     }
                 }),
             )
@@ -1519,6 +1520,7 @@ impl TaskPanel {
                     let task_id = task_id.clone();
                     move |this, _, _, cx| {
                         this.select_task_for_context_menu(task_id.clone(), cx);
+                        cx.stop_propagation();
                     }
                 }),
             )
@@ -1702,6 +1704,12 @@ impl Render for TaskPanel {
                     .id("task-panel-content")
                     .flex_1()
                     .min_h_0()
+                    .on_mouse_down(
+                        MouseButton::Right,
+                        cx.listener(|this, _, _, _| {
+                            this.context_menu_task_id = None;
+                        }),
+                    )
                     .child(match self.view_mode {
                         ViewMode::Tree => self.render_tree_view(cx).into_any_element(),
                         ViewMode::Timeline => self.render_timeline_view(cx).into_any_element(),
