@@ -332,6 +332,16 @@ RUST_LOG=info cargo run
 - 所有我们的**贡献者**和**支持者**
 
 ---
+## Star History
+
+<p align="center">
+  <a href="https://star-history.com/#sxhxliang/agent-studio&Date">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=sxhxliang/agent-studio&type=Date&theme=dark"/>
+      <img src="https://api.star-history.com/svg?repos=sxhxliang/agent-studio&type=Date" alt="Star History Chart"/>
+    </picture>
+  </a>
+</p>
 
 <div align="center">
 
